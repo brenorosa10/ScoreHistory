@@ -1,0 +1,10 @@
+.idea/
+.vs/
+bin/
+obj/
+node_modules/
+dist/
+*.user
+*.suo
+.env
+frontend/.env

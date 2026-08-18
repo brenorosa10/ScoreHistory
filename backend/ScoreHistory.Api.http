@@ -1,0 +1,24 @@
+@ScoreHistory.Api_HostAddress = http://localhost:5247
+
+### Create user
+POST {{ScoreHistory.Api_HostAddress}}/api/users
+Content-Type: application/json
+
+{
+  "email": "user@scorehistory.local",
+  "password": "Password123!",
+  "name": "Novo Usuário"
+}
+
+### Login
+POST {{ScoreHistory.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@scorehistory.local",
+  "password": "Admin123!"
+}
+
+### Me (replace TOKEN)
+GET {{ScoreHistory.Api_HostAddress}}/api/auth/me
+Authorization: Bearer TOKEN
