@@ -9,7 +9,7 @@ namespace ScoreHistory.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(InMemoryUserStore users, JwtTokenService tokens) : ControllerBase
+public sealed class AuthController(UserStore users, JwtTokenService tokens) : ControllerBase
 {
     public sealed record LoginRequest(string Email, string Password);
 
@@ -19,9 +19,11 @@ public sealed class AuthController(InMemoryUserStore users, JwtTokenService toke
 
     [HttpPost("login")]
     [AllowAnonymous]
-    public ActionResult<AuthResponse> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<AuthResponse>> Login(
+        [FromBody] LoginRequest request,
+        CancellationToken cancellationToken)
     {
-        var user = users.FindByEmail(request.Email);
+        var user = await users.FindByEmailAsync(request.Email, cancellationToken);
         if (user is null || !users.VerifyPassword(user, request.Password))
         {
             return Unauthorized(new { message = "Credenciais inválidas." });
@@ -32,7 +34,7 @@ public sealed class AuthController(InMemoryUserStore users, JwtTokenService toke
 
     [HttpGet("me")]
     [Authorize]
-    public ActionResult<MeResponse> Me()
+    public async Task<ActionResult<MeResponse>> Me(CancellationToken cancellationToken)
     {
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
         if (id is null || !Guid.TryParse(id, out var userId))
@@ -40,7 +42,7 @@ public sealed class AuthController(InMemoryUserStore users, JwtTokenService toke
             return Unauthorized();
         }
 
-        var user = users.FindById(userId);
+        var user = await users.FindByIdAsync(userId, cancellationToken);
         if (user is null)
         {
             return Unauthorized();

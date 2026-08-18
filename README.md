@@ -45,3 +45,17 @@ Usuário de desenvolvimento:
 - senha: `Admin123!`
 
 A chave JWT local está em `backend/appsettings.Development.json`. Em produção, defina `Jwt__Key` com no mínimo 32 caracteres.
+
+## Banco (Supabase Postgres)
+
+A API usa PostgreSQL. A connection string fica em `backend/appsettings.Local.json` (arquivo local, fora do git):
+
+```json
+{
+  "ConnectionStrings": {
+    "Default": "Host=aws-0-REGION.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.PROJECT;Password=YOUR-PASSWORD;SSL Mode=Require;Trust Server Certificate=true"
+  }
+}
+```
+
+No primeiro `dotnet run`, a tabela `users` é criada e o usuário de desenvolvimento é inserido se ainda não existir.

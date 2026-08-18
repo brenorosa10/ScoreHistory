@@ -1,14 +1,27 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ScoreHistory.Api.Auth;
+using ScoreHistory.Api.Data;
 using ScoreHistory.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddSingleton<InMemoryUserStore>();
+
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "ConnectionStrings:Default is missing. Copy backend/appsettings.Local.json with the Supabase URI.");
+}
+
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddScoped<UserStore>();
 builder.Services.AddSingleton<JwtTokenService>();
 
 var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
@@ -49,6 +62,23 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.ExecuteSqlRawAsync(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            "Id" uuid NOT NULL,
+            "Email" character varying(256) NOT NULL,
+            "Name" character varying(256),
+            "PasswordHash" text NOT NULL,
+            CONSTRAINT "PK_users" PRIMARY KEY ("Id")
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_users_Email" ON users ("Email");
+        """);
+    await scope.ServiceProvider.GetRequiredService<UserStore>().EnsureDemoUserAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {

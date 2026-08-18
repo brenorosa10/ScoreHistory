@@ -8,3 +8,4 @@ dist/
 *.suo
 .env
 frontend/.env
+backend/appsettings.Local.json

@@ -7,7 +7,7 @@ namespace ScoreHistory.Api.Controllers;
 
 [ApiController]
 [Route("api/users")]
-public sealed class UsersController(InMemoryUserStore users) : ControllerBase
+public sealed class UsersController(UserStore users) : ControllerBase
 {
     public sealed record CreateUserRequest(string Email, string Password, string? Name);
 
@@ -15,7 +15,9 @@ public sealed class UsersController(InMemoryUserStore users) : ControllerBase
 
     [HttpPost]
     [AllowAnonymous]
-    public ActionResult<UserResponse> Create([FromBody] CreateUserRequest request)
+    public async Task<ActionResult<UserResponse>> Create(
+        [FromBody] CreateUserRequest request,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
         {
@@ -27,21 +29,21 @@ public sealed class UsersController(InMemoryUserStore users) : ControllerBase
             return BadRequest(new { message = "A senha deve ter pelo menos 8 caracteres." });
         }
 
-        if (users.FindByEmail(request.Email) is not null)
+        if (await users.FindByEmailAsync(request.Email, cancellationToken) is not null)
         {
             return Conflict(new { message = "Este email já está cadastrado." });
         }
 
-        var user = users.Create(request.Email.Trim(), request.Password, request.Name);
+        var user = await users.CreateAsync(request.Email.Trim(), request.Password, request.Name, cancellationToken);
         var body = ToResponse(user);
         return Created($"/api/users/{user.Id}", body);
     }
 
     [HttpGet("{id:guid}")]
     [Authorize]
-    public ActionResult<UserResponse> GetById(Guid id)
+    public async Task<ActionResult<UserResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var user = users.FindById(id);
+        var user = await users.FindByIdAsync(id, cancellationToken);
         if (user is null)
         {
             return NotFound(new { message = "Usuário não encontrado." });
