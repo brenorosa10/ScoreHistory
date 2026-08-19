@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { LogOut } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { InstallAppButton } from "@/components/install-app-button";
 import { Button } from "@/components/ui/button";
 import { clearToken } from "@/lib/api";
 import { toInitials } from "@/lib/format";
@@ -53,6 +54,8 @@ export function ProfilePage() {
         </section>
 
         <ThemeToggle />
+
+        <InstallAppButton />
 
         <Button variant="outline" size="lg" className="text-destructive" onClick={() => void signOut()}>
           <LogOut />

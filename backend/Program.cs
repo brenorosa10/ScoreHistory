@@ -55,8 +55,12 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
+    var origins = builder.Configuration["Cors:Origins"]
+        ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        ?? ["http://localhost:5173"];
+
     options.AddPolicy("frontend", policy =>
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(origins)
             .AllowAnyHeader()
             .AllowAnyMethod());
 });
