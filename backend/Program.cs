@@ -76,6 +76,39 @@ await using (var scope = app.Services.CreateAsyncScope())
             CONSTRAINT "PK_users" PRIMARY KEY ("Id")
         );
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_users_Email" ON users ("Email");
+
+        CREATE TABLE IF NOT EXISTS opponents (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "Name" character varying(256) NOT NULL,
+            "Strengths" text,
+            "Weaknesses" text,
+            "Notes" text,
+            "Handedness" character varying(16) NOT NULL,
+            CONSTRAINT "PK_opponents" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_opponents_users_UserId" FOREIGN KEY ("UserId") REFERENCES users ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_opponents_UserId" ON opponents ("UserId");
+
+        CREATE TABLE IF NOT EXISTS matches (
+            "Id" uuid NOT NULL,
+            "UserId" uuid NOT NULL,
+            "OpponentId" uuid NOT NULL,
+            "PlayedAt" timestamp with time zone NOT NULL,
+            "Score" character varying(64) NOT NULL,
+            "Won" boolean NOT NULL,
+            "CourtType" character varying(32) NOT NULL,
+            "Notes" text,
+            "Strengths" text,
+            "Weaknesses" text,
+            "OpponentStrengths" text,
+            "OpponentWeaknesses" text,
+            CONSTRAINT "PK_matches" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_matches_users_UserId" FOREIGN KEY ("UserId") REFERENCES users ("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_matches_opponents_OpponentId" FOREIGN KEY ("OpponentId") REFERENCES opponents ("Id") ON DELETE RESTRICT
+        );
+        CREATE INDEX IF NOT EXISTS "IX_matches_UserId" ON matches ("UserId");
+        CREATE INDEX IF NOT EXISTS "IX_matches_OpponentId" ON matches ("OpponentId");
         """);
     await scope.ServiceProvider.GetRequiredService<UserStore>().EnsureDemoUserAsync();
 }
