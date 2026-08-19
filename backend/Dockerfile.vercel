@@ -16,6 +16,7 @@ WORKDIR /app
 COPY --from=build /app ./
 
 ENV ASPNETCORE_ENVIRONMENT=Production
-EXPOSE 80
+ENV ASPNETCORE_HTTP_PORTS=
+EXPOSE 8080
 
-ENTRYPOINT ["/bin/sh", "-c", "dotnet ScoreHistory.Api.dll --urls http://0.0.0.0:${PORT:-80}"]
+ENTRYPOINT ["/bin/sh", "-c", "exec dotnet ScoreHistory.Api.dll --urls http://0.0.0.0:${PORT:-8080}"]
