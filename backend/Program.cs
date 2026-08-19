@@ -124,7 +124,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("frontend");
 
-if (!app.Environment.IsDevelopment())
+if (!app.Environment.IsDevelopment() && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PORT")))
 {
     app.UseHttpsRedirection();
 }

@@ -1,0 +1,19 @@
+# Vercel builds this image and runs it as a Function on Fluid compute.
+# The process must listen for HTTP on $PORT (defaults to 80).
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY ScoreHistory.Api.csproj ./
+RUN dotnet restore
+
+COPY . ./
+RUN dotnet publish ScoreHistory.Api.csproj -c Release -o /app --no-restore
+
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+COPY --from=build /app ./
+
+ENV ASPNETCORE_ENVIRONMENT=Production
+EXPOSE 80
+
+ENTRYPOINT ["/bin/sh", "-c", "dotnet ScoreHistory.Api.dll --urls http://0.0.0.0:${PORT:-80}"]
