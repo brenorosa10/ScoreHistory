@@ -9,3 +9,5 @@ dist/
 .env
 frontend/.env
 backend/appsettings.Local.json
+.vercel
+.env*

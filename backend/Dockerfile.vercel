@@ -7,7 +7,9 @@ COPY ScoreHistory.Api.csproj ./
 RUN dotnet restore
 
 COPY . ./
-RUN dotnet publish ScoreHistory.Api.csproj -c Release -o /app --no-restore
+# Restore again after the full copy: Vercel/buildah layers can drop the
+# NuGet assets from the first restore, which breaks `--no-restore`.
+RUN dotnet publish ScoreHistory.Api.csproj -c Release -o /app
 
 FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
