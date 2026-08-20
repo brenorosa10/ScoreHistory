@@ -1,8 +1,5 @@
 bin/
 obj/
+*.user
 appsettings.Local.json
-**/.vs/
-**/*.user
-**/*.suo
-Dockerfile
-Dockerfile.*
+appsettings.Development.json
