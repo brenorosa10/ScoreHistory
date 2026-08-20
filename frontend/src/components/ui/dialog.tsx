@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +39,7 @@ export function Dialog({ open, title, description, onClose, children, className 
     return null;
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
       <button
         type="button"
@@ -77,6 +78,7 @@ export function Dialog({ open, title, description, onClose, children, className 
         </div>
         <div className="px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

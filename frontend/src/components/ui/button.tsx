@@ -47,6 +47,7 @@ function Button({
   loading = false,
   disabled,
   children,
+  type,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
@@ -72,6 +73,7 @@ function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(buttonVariants({ variant, size, className }))}
+      type={asChild ? type : (type ?? "button")}
       {...props}
     >
       {content}

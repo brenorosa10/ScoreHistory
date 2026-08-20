@@ -117,7 +117,7 @@ export function OpponentPicker({ value, onChange, invalid }: OpponentPickerProps
                 {mutation.error instanceof Error ? mutation.error.message : "Falha ao salvar."}
               </p>
             ) : null}
-            <Button variant="ghost" className="mt-2 w-full" onClick={() => setCreating(false)}>
+            <Button type="button" variant="ghost" className="mt-2 w-full" onClick={() => setCreating(false)}>
               Voltar para a lista
             </Button>
           </>
@@ -173,7 +173,7 @@ export function OpponentPicker({ value, onChange, invalid }: OpponentPickerProps
               )}
             </div>
 
-            <Button variant="outline" className="h-11 w-full" onClick={() => setCreating(true)}>
+            <Button type="button" variant="outline" className="h-11 w-full" onClick={() => setCreating(true)}>
               <UserPlus />
               Cadastrar novo adversário
             </Button>
