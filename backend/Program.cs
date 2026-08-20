@@ -165,6 +165,38 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
             );
             CREATE INDEX IF NOT EXISTS "IX_matches_UserId" ON matches ("UserId");
             CREATE INDEX IF NOT EXISTS "IX_matches_OpponentId" ON matches ("OpponentId");
+
+            CREATE TABLE IF NOT EXISTS rackets (
+                "Id" uuid NOT NULL,
+                "UserId" uuid NOT NULL,
+                "Name" character varying(256) NOT NULL,
+                "StringName" character varying(256),
+                "TensionLb" numeric(5,1),
+                "Grip" character varying(256),
+                "Notes" text,
+                "FrameColor" character varying(7) NOT NULL DEFAULT '#1f2937',
+                "StringColor" character varying(7) NOT NULL DEFAULT '#e5e7eb',
+                "GripColor" character varying(7) NOT NULL DEFAULT '#44403c',
+                CONSTRAINT "PK_rackets" PRIMARY KEY ("Id"),
+                CONSTRAINT "FK_rackets_users_UserId" FOREIGN KEY ("UserId") REFERENCES users ("Id") ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS "IX_rackets_UserId" ON rackets ("UserId");
+
+            CREATE TABLE IF NOT EXISTS racket_services (
+                "Id" uuid NOT NULL,
+                "RacketId" uuid NOT NULL,
+                "Kind" character varying(32) NOT NULL,
+                "ChangedAt" timestamp with time zone NOT NULL,
+                "Detail" character varying(256),
+                "TensionLb" numeric(5,1),
+                CONSTRAINT "PK_racket_services" PRIMARY KEY ("Id"),
+                CONSTRAINT "FK_racket_services_rackets_RacketId" FOREIGN KEY ("RacketId") REFERENCES rackets ("Id") ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS "IX_racket_services_RacketId" ON racket_services ("RacketId");
+
+            ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "FrameColor" character varying(7) NOT NULL DEFAULT '#1f2937';
+            ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "StringColor" character varying(7) NOT NULL DEFAULT '#e5e7eb';
+            ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "GripColor" character varying(7) NOT NULL DEFAULT '#44403c';
             """);
         await scope.ServiceProvider.GetRequiredService<UserStore>().EnsureDemoUserAsync();
     }

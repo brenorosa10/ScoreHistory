@@ -22,3 +22,23 @@ Content-Type: application/json
 ### Me (replace TOKEN)
 GET {{ScoreHistory.Api_HostAddress}}/api/auth/me
 Authorization: Bearer TOKEN
+
+### Dashboard summary
+GET {{ScoreHistory.Api_HostAddress}}/api/dashboard/summary
+Authorization: Bearer TOKEN
+
+### Dashboard head to head
+GET {{ScoreHistory.Api_HostAddress}}/api/dashboard/head-to-head
+Authorization: Bearer TOKEN
+
+### Dashboard tips
+GET {{ScoreHistory.Api_HostAddress}}/api/dashboard/tips
+Authorization: Bearer TOKEN
+
+### Opponents (paginated)
+GET {{ScoreHistory.Api_HostAddress}}/api/opponents?page=1&pageSize=10
+Authorization: Bearer TOKEN
+
+### Matches (paginated)
+GET {{ScoreHistory.Api_HostAddress}}/api/matches?page=1&pageSize=10
+Authorization: Bearer TOKEN

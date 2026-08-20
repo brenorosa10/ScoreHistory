@@ -1,15 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronRight, Lightbulb, Swords, Trophy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
+import { OpponentDetailsDialog } from "@/components/opponent-details-dialog";
 import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
 import { WinRateRing } from "@/components/win-rate-ring";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { MatchRecord } from "@/lib/api";
+import { LoadingHint } from "@/components/ui/spinner";
+import type { HeadToHead, MatchRecord } from "@/lib/api";
+import { DEFAULT_PAGE_SIZE } from "@/lib/api";
 import { formatMonth, formatShortDate, toInitials } from "@/lib/format";
-import { matchesQueryOptions } from "@/lib/queries";
+import {
+  dashboardHeadToHeadQueryOptions,
+  dashboardSummaryQueryOptions,
+  dashboardTipsQueryOptions,
+  matchesQueryOptions,
+} from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "wins" | "losses";
@@ -21,29 +30,53 @@ const filters: { value: Filter; label: string }[] = [
 ];
 
 export function HistoryPage() {
-  const { data: matches = [], isPending } = useQuery(matchesQueryOptions());
-  const [filter, setFilter] = useState<Filter>("all");
-
-  const wins = matches.filter((match) => match.won).length;
-  const losses = matches.length - wins;
-  const winRate = matches.length === 0 ? 0 : Math.round((wins / matches.length) * 100);
-  const streak = useMemo(() => buildStreak(matches), [matches]);
-  const headToHead = useMemo(() => buildHeadToHead(matches), [matches]);
-  const tips = useMemo(() => buildImprovementTips(matches), [matches]);
-
-  const visibleMatches = matches.filter((match) =>
-    filter === "all" ? true : filter === "wins" ? match.won : !match.won,
+  const navigate = useNavigate({ from: "/historico" });
+  const search = useSearch({ from: "/app/historico" });
+  const page = search.page ?? 1;
+  const filtro = search.filtro ?? "all";
+  const { data: summary, isPending: summaryPending } = useQuery(dashboardSummaryQueryOptions());
+  const { data: tips = [], isPending: tipsPending } = useQuery(dashboardTipsQueryOptions());
+  const { data: headToHead = [], isPending: h2hPending } = useQuery(dashboardHeadToHeadQueryOptions());
+  const { data: matchesPage, isPending: matchesPending, isFetching: matchesFetching } = useQuery(
+    matchesQueryOptions({
+      page,
+      pageSize: DEFAULT_PAGE_SIZE,
+      filter: filtro,
+    }),
   );
-  const grouped = useMemo(() => groupByMonth(visibleMatches), [visibleMatches]);
+
+  const matches = matchesPage?.items ?? [];
+  const grouped = useMemo(() => groupByMonth(matches), [matches]);
+  const isPending = summaryPending || matchesPending;
+  const empty = (summary?.matches ?? 0) === 0;
+  const [selectedH2h, setSelectedH2h] = useState<HeadToHead | null>(null);
+
+  useEffect(() => {
+    const totalPages = matchesPage?.totalPages ?? 0;
+    if (totalPages > 0 && page > totalPages) {
+      void navigate({
+        search: { page: totalPages, filtro: filtro === "all" ? undefined : filtro },
+        replace: true,
+      });
+    }
+  }, [filtro, matchesPage, navigate, page]);
+
+  function setFilter(next: Filter) {
+    void navigate({ search: { page: 1, filtro: next === "all" ? undefined : next } });
+  }
+
+  function goToPage(nextPage: number) {
+    void navigate({ search: { page: nextPage, filtro: filtro === "all" ? undefined : filtro } });
+  }
 
   return (
     <>
       <PageHeader title="Histórico" description="Resultados, aproveitamento e duelos" back />
 
       <main className="grid gap-6 px-4 pt-4">
-        {isPending ? (
+        {isPending && !summary ? (
           <LoadingState />
-        ) : matches.length === 0 ? (
+        ) : empty ? (
           <EmptyState
             icon={Trophy}
             title="Nenhuma partida registrada"
@@ -58,26 +91,33 @@ export function HistoryPage() {
           <>
             <section className="rounded-2xl bg-primary p-5 text-primary-foreground">
               <div className="flex items-center gap-5">
-                <WinRateRing value={winRate} />
+                <WinRateRing value={summary?.winRate ?? 0} />
                 <div className="grid gap-2">
                   <p className="text-3xl leading-none font-bold">
-                    {wins}
+                    {summary?.wins ?? 0}
                     <span className="opacity-60">-</span>
-                    {losses}
+                    {summary?.losses ?? 0}
                   </p>
                   <p className="text-sm opacity-80">
-                    {matches.length === 1 ? "1 partida registrada" : `${matches.length} partidas registradas`}
+                    {summary?.matches === 1
+                      ? "1 partida registrada"
+                      : `${summary?.matches ?? 0} partidas registradas`}
                   </p>
-                  {streak ? (
+                  {summary?.streakCount ? (
                     <span className="w-fit rounded-full bg-primary-foreground/15 px-2.5 py-1 text-xs font-semibold">
-                      {streak.count} {streak.won ? "vitórias" : "derrotas"} seguidas
+                      {summary.streakCount} {summary.streakWon ? "vitórias" : "derrotas"} seguidas
                     </span>
                   ) : null}
                 </div>
               </div>
             </section>
 
-            {tips.length > 0 ? (
+            {tipsPending ? (
+              <section className="grid gap-3">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-14 rounded-xl" />
+              </section>
+            ) : tips.length > 0 ? (
               <section className="grid gap-3">
                 <SectionTitle icon={Lightbulb}>Avisos de melhoria</SectionTitle>
                 <div className="grid gap-2">
@@ -93,30 +133,44 @@ export function HistoryPage() {
               </section>
             ) : null}
 
-            {headToHead.length > 0 ? (
+            {h2hPending ? (
+              <section className="grid gap-3">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="h-24 rounded-2xl" />
+                <Skeleton className="h-24 rounded-2xl" />
+              </section>
+            ) : headToHead.length > 0 ? (
               <section className="grid gap-3">
                 <SectionTitle icon={Swords}>Head to head</SectionTitle>
                 <div className="grid gap-2">
                   {headToHead.map((item) => {
-                    const share = Math.round((item.wins / item.played) * 100);
+                    const share = item.played === 0 ? 0 : Math.round((item.wins / item.played) * 100);
                     return (
-                      <article key={item.opponentId} className="rounded-2xl border bg-card p-4 shadow-xs">
+                      <button
+                        key={item.opponentId}
+                        type="button"
+                        onClick={() => setSelectedH2h(item)}
+                        className="rounded-2xl border bg-card p-4 text-left shadow-xs transition-colors outline-none active:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                      >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-3">
                             <Avatar name={item.name} />
                             <div className="min-w-0">
                               <p className="truncate font-medium">{item.name}</p>
                               <p className="text-xs text-muted-foreground">
-                                {item.played} {item.played === 1 ? "jogo" : "jogos"} · último{" "}
-                                {item.lastScore}
+                                {item.played} {item.played === 1 ? "jogo" : "jogos"}
+                                {item.lastScore ? ` · último ${item.lastScore}` : ""}
                               </p>
                             </div>
                           </div>
-                          <p className="shrink-0 text-sm font-semibold tabular-nums">
-                            <span className="text-success">{item.wins}</span>
-                            <span className="text-muted-foreground">-</span>
-                            <span className="text-destructive">{item.losses}</span>
-                          </p>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <p className="text-sm font-semibold tabular-nums">
+                              <span className="text-success">{item.wins}</span>
+                              <span className="text-muted-foreground">-</span>
+                              <span className="text-destructive">{item.losses}</span>
+                            </p>
+                            <ChevronRight className="size-4 text-muted-foreground" />
+                          </div>
                         </div>
                         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-destructive/20">
                           <div
@@ -124,12 +178,18 @@ export function HistoryPage() {
                             style={{ width: `${share}%` }}
                           />
                         </div>
-                      </article>
+                      </button>
                     );
                   })}
                 </div>
               </section>
             ) : null}
+
+            <OpponentDetailsDialog
+              opponentId={selectedH2h?.opponentId ?? null}
+              h2h={selectedH2h ?? undefined}
+              onClose={() => setSelectedH2h(null)}
+            />
 
             <section className="grid gap-3">
               <div className="flex items-center justify-between gap-3">
@@ -140,10 +200,10 @@ export function HistoryPage() {
                       key={item.value}
                       type="button"
                       onClick={() => setFilter(item.value)}
-                      aria-pressed={filter === item.value}
+                      aria-pressed={filtro === item.value}
                       className={cn(
                         "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                        filter === item.value
+                        filtro === item.value
                           ? "bg-background text-foreground shadow-xs"
                           : "text-muted-foreground",
                       )}
@@ -154,7 +214,12 @@ export function HistoryPage() {
                 </div>
               </div>
 
-              {visibleMatches.length === 0 ? (
+              {matchesFetching && matchesPage ? (
+                <LoadingHint label="Atualizando partidas..." />
+              ) : null}
+              {matchesPending && !matchesPage ? (
+                <LoadingHint label="Carregando partidas..." />
+              ) : matches.length === 0 ? (
                 <p className="rounded-xl bg-muted px-3 py-6 text-center text-sm text-muted-foreground">
                   Nenhuma partida neste filtro.
                 </p>
@@ -170,6 +235,15 @@ export function HistoryPage() {
                   </div>
                 ))
               )}
+
+              <Pagination
+                page={page}
+                totalPages={matchesPage?.totalPages ?? 0}
+                totalCount={matchesPage?.totalCount ?? 0}
+                pageSize={DEFAULT_PAGE_SIZE}
+                loading={matchesFetching}
+                onPageChange={goToPage}
+              />
             </section>
           </>
         )}
@@ -229,8 +303,11 @@ function LoadingState() {
     <div className="grid gap-4">
       <Skeleton className="h-36 rounded-2xl" />
       <Skeleton className="h-5 w-32" />
-      <Skeleton className="h-20 rounded-2xl" />
-      <Skeleton className="h-20 rounded-2xl" />
+      <Skeleton className="h-14 rounded-xl" />
+      <Skeleton className="h-24 rounded-2xl" />
+      <Skeleton className="h-24 rounded-2xl" />
+      <Skeleton className="h-16 rounded-2xl" />
+      <Skeleton className="h-16 rounded-2xl" />
     </div>
   );
 }
@@ -246,98 +323,4 @@ function groupByMonth(matches: MatchRecord[]): [string, MatchRecord[]][] {
   }
 
   return [...groups.entries()];
-}
-
-function buildStreak(matches: MatchRecord[]) {
-  if (matches.length === 0) {
-    return null;
-  }
-
-  const won = matches[0].won;
-  let count = 0;
-  for (const match of matches) {
-    if (match.won !== won) {
-      break;
-    }
-    count += 1;
-  }
-
-  return count >= 2 ? { won, count } : null;
-}
-
-function buildHeadToHead(matches: MatchRecord[]) {
-  const map = new Map<
-    string,
-    {
-      opponentId: string;
-      name: string;
-      wins: number;
-      losses: number;
-      played: number;
-      lastScore: string;
-      lastWon: boolean;
-    }
-  >();
-
-  for (const match of matches) {
-    const current = map.get(match.opponentId) ?? {
-      opponentId: match.opponentId,
-      name: match.opponentName,
-      wins: 0,
-      losses: 0,
-      played: 0,
-      lastScore: match.score,
-      lastWon: match.won,
-    };
-    current.played += 1;
-    if (match.won) {
-      current.wins += 1;
-    } else {
-      current.losses += 1;
-    }
-    map.set(match.opponentId, current);
-  }
-
-  return [...map.values()].sort((a, b) => b.played - a.played);
-}
-
-function buildImprovementTips(matches: MatchRecord[]) {
-  const tips: string[] = [];
-  const losses = matches.filter((match) => !match.won);
-  if (matches.length >= 3 && losses.length / matches.length >= 0.6) {
-    tips.push(
-      "Aproveitamento baixo nas últimas partidas. Revise o plano de jogo antes do próximo confronto.",
-    );
-  }
-
-  const clayLosses = losses.filter((match) => match.courtType === "Saibro").length;
-  if (clayLosses >= 2) {
-    tips.push("Várias derrotas no saibro. Trabalhe consistência e pontos longos nessa superfície.");
-  }
-
-  const leftyLosses = losses.filter((match) => match.opponentHandedness === "Canhoto").length;
-  if (leftyLosses >= 2) {
-    tips.push("Dificuldade contra canhotos. Treine devolução no lado invertido e o cruzado no backhand.");
-  }
-
-  const weaknessText = matches
-    .map((match) => match.weaknesses)
-    .filter((value): value is string => Boolean(value))
-    .join(" ")
-    .toLowerCase();
-  if (weaknessText.includes("saque")) {
-    tips.push("O saque aparece nos pontos fracos. Priorize % de primeiro saque e variação de direção.");
-  }
-  if (weaknessText.includes("backhand")) {
-    tips.push("O backhand vem sendo explorado. Reforce a profundidade e o cruzado de defesa.");
-  }
-  if (weaknessText.includes("rede") || weaknessText.includes("voleio")) {
-    tips.push("Jogo na rede em alerta. Treine aproximação e voleio de contenção.");
-  }
-
-  if (tips.length === 0 && losses.length > 0) {
-    tips.push("Nas derrotas, anote um ponto fraco objetivo para transformar o histórico em treino.");
-  }
-
-  return tips.slice(0, 4);
 }

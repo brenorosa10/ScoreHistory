@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { MatchForm } from "@/components/match-form";
 import { PageHeader } from "@/components/page-header";
 import { createMatch, type MatchPayload } from "@/lib/api";
-import { matchesQueryKey } from "@/lib/queries";
+import { matchesQueryKey, dashboardQueryKey } from "@/lib/queries";
 
 export function NewMatchPage() {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ export function NewMatchPage() {
     mutationFn: (payload: MatchPayload) => createMatch(payload),
     onSuccess: async (match) => {
       await queryClient.invalidateQueries({ queryKey: matchesQueryKey });
+      await queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
       await navigate({ to: "/partidas/$matchId", params: { matchId: match.id } });
     },
   });

@@ -1,34 +1,39 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { Lightbulb, Pencil } from "lucide-react";
+import { ChevronRight, Lightbulb, Pencil } from "lucide-react";
+import { useState } from "react";
+import { OpponentDetailsDialog } from "@/components/opponent-details-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatFullDate } from "@/lib/format";
-import { matchQueryOptions, matchesQueryOptions } from "@/lib/queries";
+import { dashboardHeadToHeadByOpponentQueryOptions, matchQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export function MatchDetailPage() {
   const { matchId } = useParams({ from: "/app/partidas/$matchId" });
   const { data: match, isPending } = useQuery(matchQueryOptions(matchId));
-  const { data: matches = [] } = useQuery(matchesQueryOptions());
+  const { data: h2h, isPending: h2hPending } = useQuery(dashboardHeadToHeadByOpponentQueryOptions(match?.opponentId ?? ""));
+  const [opponentOpen, setOpponentOpen] = useState(false);
 
   if (isPending || !match) {
     return (
       <>
         <PageHeader title="Partida" back />
         <div className="grid gap-4 px-4 pt-4">
+          <Skeleton className="h-11 w-24 rounded-xl" />
           <Skeleton className="h-36 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
           <Skeleton className="h-24 rounded-2xl" />
         </div>
       </>
     );
   }
 
-  const h2h = matches.filter((item) => item.opponentId === match.opponentId);
-  const wins = h2h.filter((item) => item.won).length;
-  const losses = h2h.length - wins;
-  const share = h2h.length === 0 ? 0 : Math.round((wins / h2h.length) * 100);
+  const wins = h2h?.wins ?? 0;
+  const losses = h2h?.losses ?? 0;
+  const played = h2h?.played ?? 0;
+  const share = played === 0 ? 0 : Math.round((wins / played) * 100);
 
   const tips = [
     match.weaknesses ? `Trabalhe isto no treino: ${match.weaknesses}` : null,
@@ -81,24 +86,47 @@ export function MatchDetailPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border bg-card p-4 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-semibold">Head to head</h2>
-              <p className="text-xs text-muted-foreground">
-                {h2h.length} {h2h.length === 1 ? "jogo" : "jogos"} contra {match.opponentName}
-              </p>
+        <section className="rounded-2xl border bg-card p-0 shadow-xs">
+          {h2hPending ? (
+            <div className="grid gap-3 p-4">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-2 w-full rounded-full" />
             </div>
-            <p className="text-lg font-bold tabular-nums">
-              <span className="text-success">{wins}</span>
-              <span className="text-muted-foreground">-</span>
-              <span className="text-destructive">{losses}</span>
-            </p>
-          </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-destructive/20">
-            <div className="h-full rounded-full bg-success" style={{ width: `${share}%` }} />
-          </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setOpponentOpen(true)}
+              className="w-full rounded-2xl p-4 text-left transition-colors outline-none active:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold">Head to head</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {played} {played === 1 ? "jogo" : "jogos"} contra {match.opponentName}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <p className="text-lg font-bold tabular-nums">
+                    <span className="text-success">{wins}</span>
+                    <span className="text-muted-foreground">-</span>
+                    <span className="text-destructive">{losses}</span>
+                  </p>
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-destructive/20">
+                <div className="h-full rounded-full bg-success" style={{ width: `${share}%` }} />
+              </div>
+            </button>
+          )}
         </section>
+
+        <OpponentDetailsDialog
+          opponentId={opponentOpen ? match.opponentId : null}
+          h2h={h2h}
+          onClose={() => setOpponentOpen(false)}
+        />
 
         {tips.length > 0 ? (
           <section className="grid gap-2">

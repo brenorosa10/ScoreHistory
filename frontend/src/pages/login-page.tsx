@@ -83,7 +83,7 @@ export function LoginPage() {
           </p>
         ) : null}
 
-        <Button type="submit" size="lg" className="mt-1" disabled={mutation.isPending}>
+        <Button type="submit" size="lg" className="mt-1" loading={mutation.isPending}>
           {mutation.isPending ? "Entrando..." : "Entrar"}
         </Button>
       </form>

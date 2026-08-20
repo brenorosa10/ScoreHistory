@@ -3,21 +3,15 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight, History, Plus, Swords, Trophy } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatShortDate } from "@/lib/format";
-import {
-  matchesQueryOptions,
-  meQueryOptions,
-  opponentsQueryOptions,
-} from "@/lib/queries";
+import { dashboardSummaryQueryOptions, meQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export function HomePage() {
   const { data: user } = useQuery(meQueryOptions());
-  const { data: matches = [] } = useQuery(matchesQueryOptions());
-  const { data: opponents = [] } = useQuery(opponentsQueryOptions());
-  const latest = matches[0];
-  const wins = matches.filter((match) => match.won).length;
-  const winRate = matches.length === 0 ? 0 : Math.round((wins / matches.length) * 100);
+  const { data: summary, isPending } = useQuery(dashboardSummaryQueryOptions());
+  const latest = summary?.latestMatch;
   const firstName = user?.name?.trim().split(/\s+/)[0] || "jogador";
 
   return (
@@ -36,10 +30,14 @@ export function HomePage() {
       </header>
 
       <main className="grid gap-6 px-4 pt-5">
+        {isPending ? (
+          <HomeLoading />
+        ) : (
+          <>
         <section className="grid grid-cols-3 gap-2">
-          <Stat label="Partidas" value={String(matches.length)} />
-          <Stat label="Vitórias" value={String(wins)} />
-          <Stat label="Aproveitamento" value={`${winRate}%`} />
+          <Stat label="Partidas" value={String(summary?.matches ?? 0)} />
+          <Stat label="Vitórias" value={String(summary?.wins ?? 0)} />
+          <Stat label="Aproveitamento" value={`${summary?.winRate ?? 0}%`} />
         </section>
 
         <section className="grid grid-cols-3 gap-2">
@@ -103,16 +101,40 @@ export function HomePage() {
           <div>
             <p className="text-sm font-medium">Adversários cadastrados</p>
             <p className="text-xs text-muted-foreground">
-              {opponents.length === 0
+              {!summary || summary.opponents === 0
                 ? "Cadastre seu primeiro rival"
-                : `${opponents.length} ${opponents.length === 1 ? "perfil" : "perfis"}`}
+                : `${summary.opponents} ${summary.opponents === 1 ? "perfil" : "perfis"}`}
             </p>
           </div>
           <Button asChild variant="outline" size="sm">
             <Link to="/adversarios">Abrir</Link>
           </Button>
         </section>
+          </>
+        )}
       </main>
+    </>
+  );
+}
+
+function HomeLoading() {
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2">
+        <Skeleton className="h-[4.25rem] rounded-xl" />
+        <Skeleton className="h-[4.25rem] rounded-xl" />
+        <Skeleton className="h-[4.25rem] rounded-xl" />
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-24 rounded-2xl" />
+      </div>
+      <div className="grid gap-3">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-24 rounded-2xl" />
+      </div>
+      <Skeleton className="h-16 rounded-2xl" />
     </>
   );
 }

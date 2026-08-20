@@ -5,9 +5,17 @@ import { OpponentForm } from "@/components/opponent-form";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { createOpponent, type OpponentPayload } from "@/lib/api";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { toInitials } from "@/lib/format";
-import { opponentsQueryKey, opponentsQueryOptions } from "@/lib/queries";
+import {
+  dashboardQueryKey,
+  opponentQueryOptions,
+  opponentsQueryKey,
+  opponentsQueryOptions,
+} from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 type OpponentPickerProps = {
@@ -18,20 +26,33 @@ type OpponentPickerProps = {
 
 export function OpponentPicker({ value, onChange, invalid }: OpponentPickerProps) {
   const queryClient = useQueryClient();
-  const { data: opponents = [] } = useQuery(opponentsQueryOptions());
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
-
-  const selected = opponents.find((opponent) => opponent.id === value);
-  const results = opponents.filter((opponent) =>
-    opponent.name.toLowerCase().includes(search.trim().toLowerCase()),
+  const debouncedSearch = useDebouncedValue(search);
+  const { data, isPending, isFetching } = useQuery(
+    opponentsQueryOptions({
+      page: 1,
+      pageSize: 50,
+      search: debouncedSearch,
+    }),
   );
+  const { data: selectedOpponent } = useQuery({
+    ...opponentQueryOptions(value),
+    enabled: Boolean(value),
+  });
+
+  const opponents = data?.items ?? [];
+  const selected =
+    opponents.find((opponent) => opponent.id === value) ??
+    (selectedOpponent?.id === value ? selectedOpponent : undefined);
+  const results = opponents;
 
   const mutation = useMutation({
     mutationFn: (payload: OpponentPayload) => createOpponent(payload),
     onSuccess: async (opponent) => {
       await queryClient.invalidateQueries({ queryKey: opponentsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
       onChange(opponent.id);
       closeDialog();
     },
@@ -102,24 +123,31 @@ export function OpponentPicker({ value, onChange, invalid }: OpponentPickerProps
           </>
         ) : (
           <div className="grid gap-3">
-            {opponents.length > 3 ? (
-              <div className="relative">
-                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Buscar adversário"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </div>
-            ) : null}
+            <div className="relative">
+              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="pr-9 pl-9"
+                placeholder="Buscar adversário"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              {isFetching ? (
+                <Spinner className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground" />
+              ) : null}
+            </div>
 
             <div className="grid max-h-72 gap-1 overflow-y-auto">
-              {results.length === 0 ? (
+              {isPending && !data ? (
+                <>
+                  <Skeleton className="h-14 rounded-xl" />
+                  <Skeleton className="h-14 rounded-xl" />
+                  <Skeleton className="h-14 rounded-xl" />
+                </>
+              ) : results.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  {opponents.length === 0
-                    ? "Você ainda não cadastrou adversários."
-                    : "Nenhum adversário encontrado."}
+                  {search.trim()
+                    ? "Nenhum adversário encontrado."
+                    : "Você ainda não cadastrou adversários."}
                 </p>
               ) : (
                 results.map((opponent) => (

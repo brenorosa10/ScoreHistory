@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { updateMatch, type MatchPayload, type MatchRecord } from "@/lib/api";
 import { COURT_TYPE_OPTIONS } from "@/lib/constants";
-import { matchQueryOptions, matchesQueryKey } from "@/lib/queries";
+import { matchQueryOptions, matchesQueryKey, dashboardQueryKey } from "@/lib/queries";
 import { parseScore } from "@/lib/score";
 
 export function EditMatchPage() {
@@ -19,6 +19,7 @@ export function EditMatchPage() {
     onSuccess: async (updated) => {
       queryClient.setQueryData([...matchesQueryKey, matchId], updated);
       await queryClient.invalidateQueries({ queryKey: matchesQueryKey });
+      await queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
       await navigate({
         to: "/partidas/$matchId",
         params: { matchId },

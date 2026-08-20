@@ -16,8 +16,7 @@
         var stored = localStorage.getItem("scorehistory.theme");
         var dark =
           stored === "dark" ||
-          ((stored === "system" || stored == null) &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches);
+          (stored === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
         document.documentElement.classList.toggle("dark", dark);
         document.documentElement.style.colorScheme = dark ? "dark" : "light";
         document.querySelector('meta[name="theme-color"]').setAttribute("content", dark ? "#1a221d" : "#f7faf7");

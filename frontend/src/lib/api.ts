@@ -45,7 +45,7 @@ export async function createUser(
   const response = await fetch(`${API_URL}/api/users`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, name: name || null }),
+    body: JSON.stringify({ email, password, name }),
   });
 
   if (!response.ok) {
@@ -88,6 +88,8 @@ export type Opponent = {
   strengths: string | null;
   weaknesses: string | null;
   notes: string | null;
+  played?: number;
+  wins?: number;
 };
 
 export type OpponentPayload = {
@@ -127,6 +129,100 @@ export type MatchPayload = {
   opponentWeaknesses?: string;
 };
 
+export const DEFAULT_PAGE_SIZE = 10;
+
+export type PagedResult<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
+export type ListOpponentsParams = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+};
+
+export type MatchFilter = "all" | "wins" | "losses";
+
+export type ListMatchesParams = {
+  page?: number;
+  pageSize?: number;
+  filter?: MatchFilter;
+};
+
+export type DashboardSummary = {
+  matches: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  opponents: number;
+  streakCount: number | null;
+  streakWon: boolean | null;
+  latestMatch: {
+    id: string;
+    opponentName: string;
+    playedAt: string;
+    courtType: string;
+    score: string;
+    won: boolean;
+  } | null;
+};
+
+export type HeadToHead = {
+  opponentId: string;
+  name: string;
+  played: number;
+  wins: number;
+  losses: number;
+  lastScore: string;
+};
+
+export type RacketServiceKind = "Corda" | "Overgrip" | "Grip" | "Outro";
+
+export type RacketServiceRecord = {
+  id: string;
+  kind: RacketServiceKind;
+  changedAt: string;
+  detail: string | null;
+  tensionLb: number | null;
+};
+
+export type RacketRecord = {
+  id: string;
+  name: string;
+  stringName: string | null;
+  tensionLb: number | null;
+  grip: string | null;
+  notes: string | null;
+  frameColor: string;
+  stringColor: string;
+  gripColor: string;
+  services: RacketServiceRecord[];
+};
+
+export type RacketServicePayload = {
+  id?: string;
+  kind: RacketServiceKind;
+  changedAt: string;
+  detail?: string;
+  tensionLb?: number | null;
+};
+
+export type RacketPayload = {
+  name: string;
+  stringName?: string;
+  tensionLb?: number | null;
+  grip?: string;
+  notes?: string;
+  frameColor?: string;
+  stringColor?: string;
+  gripColor?: string;
+  services?: RacketServicePayload[];
+};
+
 function authHeaders(): HeadersInit {
   const token = getStoredToken();
   return {
@@ -143,8 +239,27 @@ async function parseJson<T>(response: Response, fallback: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function listOpponents(): Promise<Opponent[]> {
-  const response = await fetch(`${API_URL}/api/opponents`, { headers: authHeaders() });
+function toQuery(params: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "") {
+      continue;
+    }
+    search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query ? `?${query}` : "";
+}
+
+export async function listOpponents(params: ListOpponentsParams = {}): Promise<PagedResult<Opponent>> {
+  const response = await fetch(
+    `${API_URL}/api/opponents${toQuery({
+      page: params.page ?? 1,
+      pageSize: params.pageSize ?? DEFAULT_PAGE_SIZE,
+      search: params.search?.trim() || undefined,
+    })}`,
+    { headers: authHeaders() },
+  );
   return parseJson(response, "Não foi possível carregar os adversários.");
 }
 
@@ -157,9 +272,53 @@ export async function createOpponent(payload: OpponentPayload): Promise<Opponent
   return parseJson(response, "Não foi possível cadastrar o adversário.");
 }
 
-export async function listMatches(): Promise<MatchRecord[]> {
-  const response = await fetch(`${API_URL}/api/matches`, { headers: authHeaders() });
+export async function getOpponent(id: string): Promise<Opponent> {
+  const response = await fetch(`${API_URL}/api/opponents/${id}`, { headers: authHeaders() });
+  return parseJson(response, "Não foi possível carregar o adversário.");
+}
+
+export async function updateOpponent(id: string, payload: OpponentPayload): Promise<Opponent> {
+  const response = await fetch(`${API_URL}/api/opponents/${id}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseJson(response, "Não foi possível atualizar o adversário.");
+}
+
+export async function listMatches(params: ListMatchesParams = {}): Promise<PagedResult<MatchRecord>> {
+  const response = await fetch(
+    `${API_URL}/api/matches${toQuery({
+      page: params.page ?? 1,
+      pageSize: params.pageSize ?? DEFAULT_PAGE_SIZE,
+      filter: params.filter && params.filter !== "all" ? params.filter : undefined,
+    })}`,
+    { headers: authHeaders() },
+  );
   return parseJson(response, "Não foi possível carregar as partidas.");
+}
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  const response = await fetch(`${API_URL}/api/dashboard/summary`, { headers: authHeaders() });
+  return parseJson(response, "Não foi possível carregar o resumo.");
+}
+
+export async function getDashboardHeadToHead(): Promise<HeadToHead[]> {
+  const response = await fetch(`${API_URL}/api/dashboard/head-to-head`, { headers: authHeaders() });
+  return parseJson(response, "Não foi possível carregar o head to head.");
+}
+
+export async function getDashboardHeadToHeadByOpponent(opponentId: string): Promise<HeadToHead> {
+  const response = await fetch(`${API_URL}/api/dashboard/head-to-head/${opponentId}`, {
+    headers: authHeaders(),
+  });
+  return parseJson(response, "Não foi possível carregar o confronto.");
+}
+
+export async function getDashboardTips(): Promise<string[]> {
+  const response = await fetch(`${API_URL}/api/dashboard/tips`, { headers: authHeaders() });
+  const body = await parseJson<{ tips: string[] }>(response, "Não foi possível carregar os avisos.");
+  return body.tips;
 }
 
 export async function getMatch(id: string): Promise<MatchRecord> {
@@ -183,4 +342,32 @@ export async function updateMatch(id: string, payload: MatchPayload): Promise<Ma
     body: JSON.stringify(payload),
   });
   return parseJson(response, "Não foi possível atualizar a partida.");
+}
+
+export async function listRackets(): Promise<RacketRecord[]> {
+  const response = await fetch(`${API_URL}/api/rackets`, { headers: authHeaders() });
+  return parseJson(response, "Não foi possível carregar as raquetes.");
+}
+
+export async function getRacket(id: string): Promise<RacketRecord> {
+  const response = await fetch(`${API_URL}/api/rackets/${id}`, { headers: authHeaders() });
+  return parseJson(response, "Não foi possível carregar a raquete.");
+}
+
+export async function createRacket(payload: RacketPayload): Promise<RacketRecord> {
+  const response = await fetch(`${API_URL}/api/rackets`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseJson(response, "Não foi possível cadastrar a raquete.");
+}
+
+export async function updateRacket(id: string, payload: RacketPayload): Promise<RacketRecord> {
+  const response = await fetch(`${API_URL}/api/rackets/${id}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseJson(response, "Não foi possível atualizar a raquete.");
 }

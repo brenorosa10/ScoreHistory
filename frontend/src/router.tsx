@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/app-layout";
 import { getStoredToken } from "@/lib/api";
 import { meQueryOptions } from "@/lib/queries";
 import { EditMatchPage } from "@/pages/edit-match-page";
+import { EditOpponentPage } from "@/pages/edit-opponent-page";
 import { HomePage } from "@/pages/home-page";
 import { HistoryPage } from "@/pages/history-page";
 import { LoginPage } from "@/pages/login-page";
@@ -19,6 +20,8 @@ import { NewOpponentPage } from "@/pages/new-opponent-page";
 import { OpponentsPage } from "@/pages/opponents-page";
 import { ProfilePage } from "@/pages/profile-page";
 import { RegisterPage } from "@/pages/register-page";
+import { NewRacketPage } from "@/pages/new-racket-page";
+import { EditRacketPage } from "@/pages/edit-racket-page";
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -62,6 +65,13 @@ const indexRoute = createRoute({
 const historyRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/historico",
+  validateSearch: (search: Record<string, unknown>) => {
+    const page = Number(search.page);
+    return {
+      page: Number.isFinite(page) && page > 0 ? Math.floor(page) : undefined,
+      filtro: search.filtro === "wins" || search.filtro === "losses" ? search.filtro : undefined,
+    };
+  },
   component: HistoryPage,
 });
 
@@ -71,9 +81,28 @@ const profileRoute = createRoute({
   component: ProfilePage,
 });
 
+const newRacketRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/perfil/raquetes/novo",
+  component: NewRacketPage,
+});
+
+const editRacketRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/perfil/raquetes/$racketId/editar",
+  component: EditRacketPage,
+});
+
 const opponentsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/adversarios",
+  validateSearch: (search: Record<string, unknown>) => {
+    const page = Number(search.page);
+    return {
+      page: Number.isFinite(page) && page > 0 ? Math.floor(page) : undefined,
+      q: typeof search.q === "string" && search.q ? search.q : undefined,
+    };
+  },
   component: OpponentsPage,
 });
 
@@ -81,6 +110,12 @@ const newOpponentRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/adversarios/novo",
   component: NewOpponentPage,
+});
+
+const editOpponentRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/adversarios/$opponentId/editar",
+  component: EditOpponentPage,
 });
 
 const newMatchRoute = createRoute({
@@ -130,8 +165,11 @@ const routeTree = rootRoute.addChildren([
     indexRoute,
     historyRoute,
     profileRoute,
+    newRacketRoute,
+    editRacketRoute,
     opponentsRoute,
     newOpponentRoute,
+    editOpponentRoute,
     newMatchRoute,
     matchDetailRoute,
     editMatchRoute,

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ScoreHistory.Api.Auth;
 using ScoreHistory.Api.Data;
 using ScoreHistory.Api.Models;
+using ScoreHistory.Api.Paging;
 
 namespace ScoreHistory.Api.Controllers;
 
@@ -47,7 +48,11 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
         string? OpponentWeaknesses);
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<MatchResponse>>> List(CancellationToken cancellationToken)
+    public async Task<ActionResult<PagedResult<MatchResponse>>> List(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = PageQuery.DefaultPageSize,
+        [FromQuery] string? filter = null,
+        CancellationToken cancellationToken = default)
     {
         var userId = CurrentUser.GetId(User);
         if (userId is null)
@@ -55,13 +60,32 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
             return Unauthorized();
         }
 
-        var matches = await db.Matches
+        var (resolvedPage, resolvedPageSize) = PageQuery.Normalize(page, pageSize);
+        var query = db.Matches
             .Include(match => match.Opponent)
-            .Where(match => match.UserId == userId)
-            .OrderByDescending(match => match.PlayedAt)
+            .Where(match => match.UserId == userId);
+
+        if (string.Equals(filter, "wins", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(match => match.Won);
+        }
+        else if (string.Equals(filter, "losses", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(match => !match.Won);
+        }
+
+        query = query.OrderByDescending(match => match.PlayedAt);
+        var totalCount = await query.CountAsync(cancellationToken);
+        var matches = await query
+            .Skip((resolvedPage - 1) * resolvedPageSize)
+            .Take(resolvedPageSize)
             .ToListAsync(cancellationToken);
 
-        return Ok(matches.Select(ToResponse).ToList());
+        return Ok(new PagedResult<MatchResponse>(
+            matches.Select(ToResponse).ToList(),
+            resolvedPage,
+            resolvedPageSize,
+            totalCount));
     }
 
     [HttpGet("{id:guid}")]

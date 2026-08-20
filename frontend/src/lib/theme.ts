@@ -9,7 +9,7 @@ export function getStoredTheme(): ThemePreference {
     return stored;
   }
 
-  return "system";
+  return "light";
 }
 
 export function systemPrefersDark(): boolean {

@@ -7,7 +7,7 @@ export function AppLayout() {
   const onNewMatch = pathname.startsWith("/partidas/nova");
 
   return (
-    <div className="mx-auto min-h-svh w-full max-w-md bg-background shadow-sm sm:my-6 sm:min-h-[calc(100svh-3rem)] sm:rounded-3xl sm:border">
+    <div className="mx-auto min-h-svh w-full max-w-md min-w-0 overflow-x-hidden bg-background shadow-sm sm:my-6 sm:min-h-[calc(100svh-3rem)] sm:rounded-3xl sm:border">
       <div className="pb-28">
         <Outlet />
       </div>

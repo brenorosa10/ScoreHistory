@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { OpponentForm } from "@/components/opponent-form";
 import { PageHeader } from "@/components/page-header";
 import { createOpponent, type OpponentPayload } from "@/lib/api";
-import { opponentsQueryKey } from "@/lib/queries";
+import { dashboardQueryKey, opponentsQueryKey } from "@/lib/queries";
 
 export function NewOpponentPage() {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ export function NewOpponentPage() {
     mutationFn: (payload: OpponentPayload) => createOpponent(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: opponentsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
       await navigate({ to: "/adversarios" });
     },
   });

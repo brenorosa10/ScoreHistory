@@ -8,6 +8,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<User> Users => Set<User>();
     public DbSet<Opponent> Opponents => Set<Opponent>();
     public DbSet<Match> Matches => Set<Match>();
+    public DbSet<Racket> Rackets => Set<Racket>();
+    public DbSet<RacketService> RacketServices => Set<RacketService>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,6 +43,34 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .WithMany()
                 .HasForeignKey(match => match.OpponentId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Racket>(entity =>
+        {
+            entity.ToTable("rackets");
+            entity.HasKey(racket => racket.Id);
+            entity.HasIndex(racket => racket.UserId);
+            entity.Property(racket => racket.Name).HasMaxLength(256).IsRequired();
+            entity.Property(racket => racket.StringName).HasMaxLength(256);
+            entity.Property(racket => racket.TensionLb).HasPrecision(5, 1);
+            entity.Property(racket => racket.Grip).HasMaxLength(256);
+            entity.Property(racket => racket.FrameColor).HasMaxLength(7);
+            entity.Property(racket => racket.StringColor).HasMaxLength(7);
+            entity.Property(racket => racket.GripColor).HasMaxLength(7);
+            entity.HasMany(racket => racket.Services)
+                .WithOne()
+                .HasForeignKey(service => service.RacketId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RacketService>(entity =>
+        {
+            entity.ToTable("racket_services");
+            entity.HasKey(service => service.Id);
+            entity.HasIndex(service => service.RacketId);
+            entity.Property(service => service.Kind).HasMaxLength(32).IsRequired();
+            entity.Property(service => service.Detail).HasMaxLength(256);
+            entity.Property(service => service.TensionLb).HasPrecision(5, 1);
         });
     }
 }

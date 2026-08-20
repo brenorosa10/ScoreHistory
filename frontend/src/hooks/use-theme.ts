@@ -8,7 +8,7 @@ import {
 
 export function useTheme() {
   const [preference, setPreference] = useState<ThemePreference>(() =>
-    typeof window === "undefined" ? "system" : getStoredTheme(),
+    typeof window === "undefined" ? "light" : getStoredTheme(),
   );
 
   useEffect(() => {

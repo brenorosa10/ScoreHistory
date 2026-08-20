@@ -9,7 +9,7 @@ namespace ScoreHistory.Api.Controllers;
 [Route("api/users")]
 public sealed class UsersController(UserStore users) : ControllerBase
 {
-    public sealed record CreateUserRequest(string Email, string Password, string? Name);
+    public sealed record CreateUserRequest(string Email, string Password, string Name);
 
     public sealed record UserResponse(Guid Id, string Email, string? Name);
 
@@ -19,14 +19,16 @@ public sealed class UsersController(UserStore users) : ControllerBase
         [FromBody] CreateUserRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        if (string.IsNullOrWhiteSpace(request.Name) ||
+            string.IsNullOrWhiteSpace(request.Email) ||
+            string.IsNullOrWhiteSpace(request.Password))
         {
-            return BadRequest(new { message = "Email e senha são obrigatórios." });
+            return BadRequest(new { message = "Nome, email e senha são obrigatórios." });
         }
 
-        if (request.Password.Length < 8)
+        if (request.Password.Length < 6)
         {
-            return BadRequest(new { message = "A senha deve ter pelo menos 8 caracteres." });
+            return BadRequest(new { message = "A senha deve ter pelo menos 6 caracteres." });
         }
 
         if (await users.FindByEmailAsync(request.Email, cancellationToken) is not null)

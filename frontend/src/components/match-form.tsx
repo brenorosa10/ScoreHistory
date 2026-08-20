@@ -197,7 +197,7 @@ export function MatchForm({
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={pending}>
+      <Button type="submit" size="lg" loading={pending}>
         {pending ? "Salvando..." : submitLabel}
       </Button>
     </form>

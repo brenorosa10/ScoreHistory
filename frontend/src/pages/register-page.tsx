@@ -52,8 +52,14 @@ export function RegisterPage() {
       }
     >
       <form className="grid gap-4" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
-        <Field label="Nome" htmlFor="name" hint="opcional">
-          <Input id="name" autoComplete="name" placeholder="Como quer ser chamado" {...register("name")} />
+        <Field label="Nome" htmlFor="name" error={errors.name?.message}>
+          <Input
+            id="name"
+            autoComplete="name"
+            placeholder="Como quer ser chamado"
+            aria-invalid={errors.name ? true : undefined}
+            {...register("name", { required: "Informe o nome." })}
+          />
         </Field>
 
         <Field label="Email" htmlFor="email" error={errors.email?.message}>
@@ -77,7 +83,7 @@ export function RegisterPage() {
         <Field
           label="Senha"
           htmlFor="password"
-          hint="mín. 8 caracteres"
+          hint="mín. 6 caracteres"
           error={errors.password?.message}
         >
           <PasswordInput
@@ -88,8 +94,8 @@ export function RegisterPage() {
             {...register("password", {
               required: "Informe a senha.",
               minLength: {
-                value: 8,
-                message: "A senha deve ter pelo menos 8 caracteres.",
+                value: 6,
+                message: "A senha deve ter pelo menos 6 caracteres.",
               },
             })}
           />
@@ -103,7 +109,7 @@ export function RegisterPage() {
           </p>
         ) : null}
 
-        <Button type="submit" size="lg" className="mt-1" disabled={mutation.isPending}>
+        <Button type="submit" size="lg" className="mt-1" loading={mutation.isPending}>
           {mutation.isPending ? "Criando..." : "Criar conta"}
         </Button>
       </form>

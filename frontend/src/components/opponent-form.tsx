@@ -104,7 +104,7 @@ export function OpponentForm({ defaultValues, submitLabel, pending, onSubmit }: 
         />
       </Field>
 
-      <Button type="submit" size="lg" disabled={pending}>
+      <Button type="submit" size="lg" loading={pending}>
         {pending ? "Salvando..." : submitLabel}
       </Button>
     </form>
