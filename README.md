@@ -60,56 +60,12 @@ A API usa PostgreSQL. A connection string fica em `backend/appsettings.Local.jso
 
 No primeiro `dotnet run`, a tabela `users` é criada e o usuário de desenvolvimento é inserido se ainda não existir.
 
-## Deploy automático (Docker + GitHub Actions)
+## Deploy na VPS
 
-Cada push na `main` constrói as imagens, publica no GitHub Container Registry e atualiza a VPS.
-
-### 1. Um vez na VPS
-
-Instale Docker Engine com o plugin Compose. Depois:
+No clone do repositório, com o `.env` na raiz (veja `env.example`):
 
 ```bash
-sudo mkdir -p /opt/scorehistory
-sudo chown "$USER:$USER" /opt/scorehistory
-nano /opt/scorehistory/.env
+./scripts/deploy.sh
 ```
 
-Cole o conteúdo de `env.example` com os valores de produção. O `.env` não vai para o git.
-
-Adicione o usuário do deploy ao grupo `docker`:
-
-```bash
-sudo usermod -aG docker "$USER"
-```
-
-Crie um par de chaves só para o deploy (na sua máquina):
-
-```bash
-ssh-keygen -t ed25519 -f scorehistory-deploy -N ""
-```
-
-Coloque `scorehistory-deploy.pub` em `~/.ssh/authorized_keys` na VPS.
-
-### 2. Secrets no GitHub
-
-Em **Settings → Secrets and variables → Actions**:
-
-| Secret | Exemplo |
-| --- | --- |
-| `DEPLOY_HOST` | `srv1916822.hstgr.cloud` |
-| `DEPLOY_USER` | usuário SSH da VPS |
-| `DEPLOY_SSH_KEY` | conteúdo privado de `scorehistory-deploy` |
-| `DEPLOY_PATH` | `/opt/scorehistory` (opcional; esse é o padrão) |
-| `DEPLOY_PORT` | `22` (opcional) |
-| `GHCR_TOKEN` | PAT com `read:packages` (recomendado se o pacote for privado) |
-
-O `GITHUB_TOKEN` do workflow já publica as imagens. Na VPS, o pull de imagens **privadas** costuma exigir `GHCR_TOKEN`. Alternativa: após o primeiro deploy, em **Packages**, deixe `scorehistory-backend` e `scorehistory-frontend` públicos.
-
-### 3. Conferir
-
-O workflow **Deploy** roda no push da `main` e também em **Actions → Deploy → Run workflow**. Na VPS:
-
-```bash
-cd /opt/scorehistory
-docker compose ps
-```
+O script faz `git pull` e sobe de novo o `docker compose`.
