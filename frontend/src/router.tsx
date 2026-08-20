@@ -65,12 +65,16 @@ const indexRoute = createRoute({
 const historyRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/historico",
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (search: Record<string, unknown>): { page?: number; filtro?: "wins" | "losses" } => {
     const page = Number(search.page);
-    return {
-      page: Number.isFinite(page) && page > 0 ? Math.floor(page) : undefined,
-      filtro: search.filtro === "wins" || search.filtro === "losses" ? search.filtro : undefined,
-    };
+    const next: { page?: number; filtro?: "wins" | "losses" } = {};
+    if (Number.isFinite(page) && page > 0) {
+      next.page = Math.floor(page);
+    }
+    if (search.filtro === "wins" || search.filtro === "losses") {
+      next.filtro = search.filtro;
+    }
+    return next;
   },
   component: HistoryPage,
 });
@@ -96,12 +100,16 @@ const editRacketRoute = createRoute({
 const opponentsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/adversarios",
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (search: Record<string, unknown>): { page?: number; q?: string } => {
     const page = Number(search.page);
-    return {
-      page: Number.isFinite(page) && page > 0 ? Math.floor(page) : undefined,
-      q: typeof search.q === "string" && search.q ? search.q : undefined,
-    };
+    const next: { page?: number; q?: string } = {};
+    if (Number.isFinite(page) && page > 0) {
+      next.page = Math.floor(page);
+    }
+    if (typeof search.q === "string" && search.q) {
+      next.q = search.q;
+    }
+    return next;
   },
   component: OpponentsPage,
 });

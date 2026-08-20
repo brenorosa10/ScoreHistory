@@ -33,7 +33,7 @@ export function HistoryPage() {
   const navigate = useNavigate({ from: "/historico" });
   const search = useSearch({ from: "/app/historico" });
   const page = search.page ?? 1;
-  const filtro = search.filtro ?? "all";
+  const filtro: Filter = search.filtro ?? "all";
   const { data: summary, isPending: summaryPending } = useQuery(dashboardSummaryQueryOptions());
   const { data: tips = [], isPending: tipsPending } = useQuery(dashboardTipsQueryOptions());
   const { data: headToHead = [], isPending: h2hPending } = useQuery(dashboardHeadToHeadQueryOptions());

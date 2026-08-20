@@ -207,7 +207,7 @@ export type RacketServicePayload = {
   id?: string;
   kind: RacketServiceKind;
   changedAt: string;
-  detail?: string;
+  detail?: string | null;
   tensionLb?: number | null;
 };
 
