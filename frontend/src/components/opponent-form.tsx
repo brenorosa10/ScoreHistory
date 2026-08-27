@@ -1,9 +1,11 @@
+import { useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { OptionGroup } from "@/components/ui/option-group";
 import { Textarea } from "@/components/ui/textarea";
+import { useScrollToFieldError } from "@/hooks/use-scroll-to-field-error";
 import { HANDEDNESS_OPTIONS } from "@/lib/constants";
 import type { OpponentPayload } from "@/lib/api";
 
@@ -25,11 +27,12 @@ type OpponentFormProps = {
 const handednessOptions = HANDEDNESS_OPTIONS.map((option) => ({ value: option, label: option }));
 
 export function OpponentForm({ defaultValues, submitLabel, pending, onSubmit }: OpponentFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, submitCount },
   } = useForm<OpponentFormValues>({
     defaultValues: {
       name: "",
@@ -40,9 +43,11 @@ export function OpponentForm({ defaultValues, submitLabel, pending, onSubmit }: 
       ...defaultValues,
     },
   });
+  useScrollToFieldError(formRef, submitCount);
 
   return (
     <form
+      ref={formRef}
       className="grid gap-4"
       onSubmit={handleSubmit((values) =>
         onSubmit({

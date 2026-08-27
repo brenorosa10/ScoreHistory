@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { OpponentPicker } from "@/components/opponent-picker";
 import { ScoreBuilder } from "@/components/score-builder";
@@ -6,6 +7,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { OptionGroup, ResultToggle } from "@/components/ui/option-group";
 import { Textarea } from "@/components/ui/textarea";
+import { useScrollToFieldError } from "@/hooks/use-scroll-to-field-error";
 import type { MatchPayload } from "@/lib/api";
 import { COURT_TYPE_OPTIONS } from "@/lib/constants";
 import { emptySet, formatScore, hasResult, resolveWinner, type ScoreEntry } from "@/lib/score";
@@ -48,16 +50,17 @@ export function MatchForm({
   onSubmit,
   extra,
 }: MatchFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
   const {
     register,
     control,
     handleSubmit,
     watch,
-    formState: { errors },
+    formState: { errors, submitCount },
   } = useForm<MatchFormValues>({
     defaultValues: {
       opponentId: "",
-      sets: [emptySet(), emptySet()],
+      sets: [emptySet()],
       won: "true",
       courtType: "Saibro",
       playedAt: today(),
@@ -74,9 +77,11 @@ export function MatchForm({
   const won = watch("won");
   const scoreWinner = resolveWinner(sets);
   const scoreMismatch = scoreWinner !== null && (scoreWinner === "home") !== (won === "true");
+  useScrollToFieldError(formRef, submitCount);
 
   return (
     <form
+      ref={formRef}
       className="grid gap-4 px-4 pt-4"
       onSubmit={handleSubmit((values) =>
         onSubmit({

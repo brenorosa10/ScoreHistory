@@ -41,7 +41,7 @@ export function ScoreBuilder({ value, onChange }: ScoreBuilderProps) {
   let setNumber = 0;
 
   return (
-    <div className="grid gap-2">
+    <div id="sets" className="grid gap-2">
       <div className="grid gap-2">
         {value.map((entry, index) => {
           const isTiebreak = entry.kind === "tiebreak";

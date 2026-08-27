@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { History, Plus, Settings2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useScrollToFieldError } from "@/hooks/use-scroll-to-field-error";
 import { RacketPreview, DEFAULT_FRAME_COLOR, DEFAULT_GRIP_COLOR, DEFAULT_STRING_COLOR } from "@/components/racket-preview";
 import { RacketServiceHistory } from "@/components/racket-service-history";
 import { Button } from "@/components/ui/button";
@@ -54,12 +55,13 @@ export function RacketForm({
   pending,
   onSubmit,
 }: RacketFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
   const {
     register,
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, submitCount },
   } = useForm<RacketFormValues>({
     defaultValues: {
       name: "",
@@ -73,6 +75,7 @@ export function RacketForm({
       ...defaultValues,
     },
   });
+  useScrollToFieldError(formRef, submitCount);
   const [services, setServices] = useState<RacketServicePayload[]>(defaultServices);
   const [kind, setKind] = useState<RacketServiceKind>("Corda");
   const [changedAt, setChangedAt] = useState(today);
@@ -125,6 +128,7 @@ export function RacketForm({
 
   return (
     <form
+      ref={formRef}
       className="grid gap-5"
       onSubmit={handleSubmit((values) =>
         onSubmit({

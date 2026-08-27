@@ -12,7 +12,10 @@ type FieldProps = {
 
 export function Field({ label, htmlFor, hint, error, className, children }: FieldProps) {
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div
+      className={cn("grid scroll-mt-24 gap-2", className)}
+      data-field-error={error ? true : undefined}
+    >
       <div className="flex items-baseline justify-between gap-3">
         <Label htmlFor={htmlFor}>{label}</Label>
         {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}

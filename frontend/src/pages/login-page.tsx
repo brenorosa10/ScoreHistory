@@ -1,11 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useRef } from "react";
 import { useForm } from "react-hook-form";
 import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useScrollToFieldError } from "@/hooks/use-scroll-to-field-error";
 import { loginAndLoadUser, meQueryKey } from "@/lib/queries";
 
 type LoginFormValues = {
@@ -16,10 +18,11 @@ type LoginFormValues = {
 export function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const formRef = useRef<HTMLFormElement>(null);
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, submitCount },
   } = useForm<LoginFormValues>({
     defaultValues: {
       email: "",
@@ -34,6 +37,7 @@ export function LoginPage() {
       await navigate({ to: "/", replace: true });
     },
   });
+  useScrollToFieldError(formRef, submitCount);
 
   return (
     <AuthShell
@@ -48,7 +52,11 @@ export function LoginPage() {
         </>
       }
     >
-      <form className="grid gap-4" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
+      <form
+        ref={formRef}
+        className="grid gap-4"
+        onSubmit={handleSubmit((values) => mutation.mutate(values))}
+      >
         <Field label="Email" htmlFor="email" error={errors.email?.message}>
           <Input
             id="email"
