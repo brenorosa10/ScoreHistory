@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import { DeleteMatchDialog } from "@/components/delete-match-dialog";
 import { MatchForm, type MatchFormValues } from "@/components/match-form";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { updateMatch, type MatchPayload, type MatchRecord } from "@/lib/api";
 import { COURT_TYPE_OPTIONS } from "@/lib/constants";
@@ -13,6 +17,7 @@ export function EditMatchPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: match, isPending, isError } = useQuery(matchQueryOptions(matchId));
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const mutation = useMutation({
     mutationFn: (payload: MatchPayload) => updateMatch(matchId, payload),
@@ -60,6 +65,24 @@ export function EditMatchPage() {
         pending={mutation.isPending}
         error={mutation.error}
         onSubmit={(payload) => mutation.mutate(payload)}
+        extra={
+          <Button
+            type="button"
+            variant="destructive"
+            size="lg"
+            disabled={mutation.isPending}
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 />
+            Excluir partida
+          </Button>
+        }
+      />
+      <DeleteMatchDialog
+        match={match}
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onDeleted={() => navigate({ to: "/historico", replace: true })}
       />
     </>
   );

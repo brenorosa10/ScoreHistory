@@ -344,6 +344,16 @@ export async function updateMatch(id: string, payload: MatchPayload): Promise<Ma
   return parseJson(response, "Não foi possível atualizar a partida.");
 }
 
+export async function deleteMatch(id: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/matches/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, "Não foi possível excluir a partida."));
+  }
+}
+
 export async function listRackets(): Promise<RacketRecord[]> {
   const response = await fetch(`${API_URL}/api/rackets`, { headers: authHeaders() });
   return parseJson(response, "Não foi possível carregar as raquetes.");

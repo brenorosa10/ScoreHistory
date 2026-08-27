@@ -212,6 +212,28 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
         return Ok(ToResponse(match));
     }
 
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        var userId = CurrentUser.GetId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var match = await db.Matches.FirstOrDefaultAsync(
+            item => item.Id == id && item.UserId == userId,
+            cancellationToken);
+        if (match is null)
+        {
+            return NotFound(new { message = "Partida não encontrada." });
+        }
+
+        db.Matches.Remove(match);
+        await db.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
     private static MatchResponse ToResponse(Match match) =>
         new(
             match.Id,

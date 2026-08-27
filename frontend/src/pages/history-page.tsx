@@ -2,17 +2,19 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronRight, Lightbulb, Swords, Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { DeleteMatchDialog } from "@/components/delete-match-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { OpponentDetailsDialog } from "@/components/opponent-details-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
+import { SwipeableMatchRow } from "@/components/swipeable-match-row";
 import { WinRateRing } from "@/components/win-rate-ring";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingHint } from "@/components/ui/spinner";
 import type { HeadToHead, MatchRecord } from "@/lib/api";
 import { DEFAULT_PAGE_SIZE } from "@/lib/api";
-import { formatMonth, formatShortDate, toInitials } from "@/lib/format";
+import { formatMonth, toInitials } from "@/lib/format";
 import {
   dashboardHeadToHeadQueryOptions,
   dashboardSummaryQueryOptions,
@@ -50,6 +52,8 @@ export function HistoryPage() {
   const isPending = summaryPending || matchesPending;
   const empty = (summary?.matches ?? 0) === 0;
   const [selectedH2h, setSelectedH2h] = useState<HeadToHead | null>(null);
+  const [revealedMatchId, setRevealedMatchId] = useState<string | null>(null);
+  const [matchToDelete, setMatchToDelete] = useState<MatchRecord | null>(null);
 
   useEffect(() => {
     const totalPages = matchesPage?.totalPages ?? 0;
@@ -230,7 +234,16 @@ export function HistoryPage() {
                       {month}
                     </p>
                     {items.map((match) => (
-                      <MatchRow key={match.id} match={match} />
+                      <SwipeableMatchRow
+                        key={match.id}
+                        match={match}
+                        revealed={revealedMatchId === match.id}
+                        onRevealedChange={(open) => setRevealedMatchId(open ? match.id : null)}
+                        onRequestDelete={() => {
+                          setRevealedMatchId(null);
+                          setMatchToDelete(match);
+                        }}
+                      />
                     ))}
                   </div>
                 ))
@@ -248,36 +261,13 @@ export function HistoryPage() {
           </>
         )}
       </main>
-    </>
-  );
-}
 
-function MatchRow({ match }: { match: MatchRecord }) {
-  return (
-    <Link
-      to="/partidas/$matchId"
-      params={{ matchId: match.id }}
-      className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-xs transition-colors active:bg-accent"
-    >
-      <span
-        className={cn(
-          "grid size-11 shrink-0 place-items-center rounded-xl text-sm font-bold",
-          match.won ? "bg-success/12 text-success" : "bg-destructive/12 text-destructive",
-        )}
-      >
-        {match.won ? "V" : "D"}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{match.opponentName}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          {formatShortDate(match.playedAt)} · {match.courtType}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <span className="text-sm font-semibold tabular-nums">{match.score}</span>
-        <ChevronRight className="size-4 text-muted-foreground" />
-      </div>
-    </Link>
+      <DeleteMatchDialog
+        match={matchToDelete}
+        open={Boolean(matchToDelete)}
+        onClose={() => setMatchToDelete(null)}
+      />
+    </>
   );
 }
 

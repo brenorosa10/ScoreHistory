@@ -29,6 +29,7 @@ type MatchFormProps = {
   pending: boolean;
   error?: Error | null;
   onSubmit: (payload: MatchPayload) => void;
+  extra?: React.ReactNode;
 };
 
 const courtOptions = COURT_TYPE_OPTIONS.map((option) => ({ value: option, label: option }));
@@ -45,6 +46,7 @@ export function MatchForm({
   pending,
   error,
   onSubmit,
+  extra,
 }: MatchFormProps) {
   const {
     register,
@@ -200,6 +202,7 @@ export function MatchForm({
       <Button type="submit" size="lg" loading={pending}>
         {pending ? "Salvando..." : submitLabel}
       </Button>
+      {extra}
     </form>
   );
 }
