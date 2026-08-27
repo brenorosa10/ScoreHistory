@@ -15,6 +15,37 @@ export function formatMonth(value: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+function startOfDay(value: Date): number {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+}
+
+export function daysSince(value: string): number {
+  const diff = startOfDay(new Date()) - startOfDay(new Date(value));
+  return Math.max(0, Math.round(diff / 86_400_000));
+}
+
+export function formatRelativeDays(value: string): string {
+  const days = daysSince(value);
+
+  if (days === 0) {
+    return "hoje";
+  }
+  if (days === 1) {
+    return "ontem";
+  }
+  if (days < 30) {
+    return `há ${days} dias`;
+  }
+
+  const months = Math.round(days / 30);
+  if (months < 12) {
+    return months === 1 ? "há 1 mês" : `há ${months} meses`;
+  }
+
+  const years = Math.floor(months / 12);
+  return years === 1 ? "há 1 ano" : `há ${years} anos`;
+}
+
 export function toInitials(value: string): string {
   const parts = value.trim().split(/\s+/).slice(0, 2);
   return parts.map((part) => part.charAt(0).toUpperCase()).join("") || "?";

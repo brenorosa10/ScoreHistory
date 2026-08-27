@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,20 @@ type DialogProps = {
 };
 
 export function Dialog({ open, title, description, onClose, children, className }: DialogProps) {
+  const [allowBackdropClose, setAllowBackdropClose] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setAllowBackdropClose(false);
+      return;
+    }
+
+    // iOS Safari fires a delayed click after the tap that opened the dialog.
+    // Ignore backdrop dismiss until that ghost click has passed.
+    const timer = window.setTimeout(() => setAllowBackdropClose(true), 450);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
   useEffect(() => {
     if (!open) {
       return;
@@ -45,7 +59,11 @@ export function Dialog({ open, title, description, onClose, children, className 
         type="button"
         className="absolute inset-0 animate-fade-in bg-foreground/40 backdrop-blur-[2px]"
         aria-label="Fechar"
-        onClick={onClose}
+        onClick={() => {
+          if (allowBackdropClose) {
+            onClose();
+          }
+        }}
       />
       <div
         role="dialog"

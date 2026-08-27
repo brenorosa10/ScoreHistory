@@ -19,6 +19,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [showManualHelp, setShowManualHelp] = useState(false);
   const isIos = typeof window === "undefined" ? false : isIosDevice();
+  const usesManualInstall = isIos || (!deferredPrompt && showManualHelp);
 
   useEffect(() => {
     function onBeforeInstall(event: BeforeInstallPromptEvent) {
@@ -85,13 +86,19 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
     [deferredPrompt, install, isInstalled, isIos],
   );
 
+  const showIosHelp = isIos && !deferredPrompt;
+
   return (
     <PwaInstallContext.Provider value={value}>
       {children}
       <Dialog
         open={dialogOpen && !isInstalled}
         title="Instalar o ScoreHistory"
-        description="Abra o app direto da tela inicial, sem precisar do navegador."
+        description={
+          showIosHelp
+            ? "No Safari, o app é adicionado pela tela de compartilhar."
+            : "Abra o app direto da tela inicial, sem precisar do navegador."
+        }
         onClose={closeDialog}
       >
         <div className="grid gap-4">
@@ -103,33 +110,89 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {showManualHelp || (isIos && !deferredPrompt) ? (
+          {showIosHelp ? (
+            <IosInstallSteps />
+          ) : usesManualInstall ? (
             <p className="text-sm text-muted-foreground">
-              {isIos ? (
-                <>
-                  Toque em <strong>Compartilhar</strong> e depois em{" "}
-                  <strong>Adicionar à Tela de Início</strong>.
-                </>
-              ) : (
-                <>
-                  No menu do navegador, escolha <strong>Instalar aplicativo</strong> ou{" "}
-                  <strong>Adicionar à tela inicial</strong>.
-                </>
-              )}
+              No menu do navegador, escolha <strong>Instalar aplicativo</strong> ou{" "}
+              <strong>Adicionar à tela inicial</strong>.
             </p>
           ) : null}
 
           <div className="grid gap-2">
-            <Button size="lg" onClick={() => void install()}>
-              <Download />
-              Instalar
-            </Button>
-            <Button variant="outline" size="lg" onClick={closeDialog}>
-              Agora não
-            </Button>
+            {showIosHelp ? (
+              <Button size="lg" onClick={closeDialog}>
+                Entendi
+              </Button>
+            ) : (
+              <>
+                <Button size="lg" onClick={() => void install()}>
+                  <Download />
+                  Instalar
+                </Button>
+                <Button variant="outline" size="lg" onClick={closeDialog}>
+                  Agora não
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </Dialog>
     </PwaInstallContext.Provider>
+  );
+}
+
+function IosShareIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 3v12" />
+      <path d="m8 7 4-4 4 4" />
+      <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+    </svg>
+  );
+}
+
+function IosInstallSteps() {
+  return (
+    <ol className="grid gap-3 text-sm">
+      <li className="flex items-start gap-3">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">
+          1
+        </span>
+        <p className="pt-0.5 text-muted-foreground">
+          Toque em{" "}
+          <span className="inline-flex items-center gap-1 font-medium text-foreground">
+            Compartilhar
+            <IosShareIcon className="size-4" />
+          </span>{" "}
+          na barra do Safari.
+        </p>
+      </li>
+      <li className="flex items-start gap-3">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">
+          2
+        </span>
+        <p className="pt-0.5 text-muted-foreground">
+          Role e toque em <strong className="text-foreground">Adicionar à Tela de Início</strong>.
+        </p>
+      </li>
+      <li className="flex items-start gap-3">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">
+          3
+        </span>
+        <p className="pt-0.5 text-muted-foreground">
+          Confirme em <strong className="text-foreground">Adicionar</strong>.
+        </p>
+      </li>
+    </ol>
   );
 }

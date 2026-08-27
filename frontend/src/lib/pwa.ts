@@ -8,7 +8,13 @@ export function isStandaloneDisplay(): boolean {
 }
 
 export function isIosDevice(): boolean {
-  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+  const ua = window.navigator.userAgent;
+  if (/iphone|ipad|ipod/i.test(ua)) {
+    return true;
+  }
+
+  // iPadOS 13+ reports as Macintosh in Safari.
+  return window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1;
 }
 
 export function wasInstallDismissed(): boolean {

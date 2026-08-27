@@ -30,18 +30,27 @@ export function RacketPreview({
   onGripColorChange,
 }: RacketPreviewProps) {
   const racket = name.trim() || "Sua raquete";
-  const strings = stringName.trim() || "Corda";
-  const tension = tensionLb.trim() ? `${tensionLb.trim()} lb` : "lb";
-  const handle = grip.trim() || "Grip";
+  const strings = stringName.trim() || "—";
+  const tension = tensionLb.trim() ? `${tensionLb.trim()} lb` : "—";
+  const handle = grip.trim() || "—";
 
   return (
-    <section className="grid min-w-0 gap-3 overflow-hidden rounded-2xl border bg-card p-4 shadow-xs">
-      <div>
+    <section className="grid min-w-0 gap-4 overflow-hidden rounded-2xl border bg-card p-4 shadow-xs">
+      <div className="min-w-0">
         <h2 className="text-sm font-semibold">Visualização</h2>
-        <p className="text-xs text-muted-foreground">Toque nos ícones para mudar as cores.</p>
+        <p className="text-xs text-muted-foreground">Toque nas cores para personalizar.</p>
       </div>
-      <div className="grid min-w-0 justify-items-center gap-4">
-        <svg viewBox="0 0 160 280" className="h-48 max-w-full" aria-hidden>
+
+      <div className="relative grid justify-items-center overflow-hidden rounded-2xl bg-gradient-to-b from-accent/60 to-muted/30 px-4 py-5">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-16 size-48 rounded-full bg-background/50 blur-2xl"
+        />
+        <svg
+          viewBox="0 0 160 280"
+          className="relative h-52 max-w-full drop-shadow-[0_8px_16px_rgba(0,0,0,0.18)]"
+          aria-hidden
+        >
           <ellipse cx="80" cy="78" rx="52" ry="68" fill="none" stroke={frameColor} strokeWidth="7" />
           <ellipse cx="80" cy="78" rx="42" ry="58" fill={stringColor} opacity="0.35" />
           {Array.from({ length: 7 }, (_, index) => {
@@ -97,18 +106,20 @@ export function RacketPreview({
           ))}
         </svg>
 
-        <div className="grid w-full grid-cols-3 gap-2">
-          <ColorButton label="Raquete" value={frameColor} onChange={onFrameColorChange} />
-          <ColorButton label="Corda" value={stringColor} onChange={onStringColorChange} />
-          <ColorButton label="Grip" value={gripColor} onChange={onGripColorChange} />
-        </div>
-
-        <dl className="grid w-full min-w-0 gap-2 text-sm">
-          <Row label="Raquete" value={racket} />
-          <Row label="Corda" value={`${strings}${tensionLb.trim() ? ` · ${tension}` : ""}`} />
-          <Row label="Grip" value={handle} />
-        </dl>
+        <p className="relative mt-1 max-w-full truncate text-center text-sm font-semibold">{racket}</p>
       </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <ColorButton label="Raquete" value={frameColor} onChange={onFrameColorChange} />
+        <ColorButton label="Corda" value={stringColor} onChange={onStringColorChange} />
+        <ColorButton label="Grip" value={gripColor} onChange={onGripColorChange} />
+      </div>
+
+      <dl className="grid min-w-0 grid-cols-3 gap-2">
+        <Spec label="Corda" value={strings} />
+        <Spec label="Tensão" value={tension} />
+        <Spec label="Grip" value={handle} />
+      </dl>
     </section>
   );
 }
@@ -123,9 +134,9 @@ function ColorButton({
   onChange: (color: string) => void;
 }) {
   return (
-    <label className="grid min-w-0 justify-items-center gap-1">
+    <label className="grid min-w-0 cursor-pointer justify-items-center gap-1.5 rounded-xl border bg-background px-2 py-2.5 transition-colors hover:bg-accent/50">
       <span
-        className="relative grid size-10 cursor-pointer place-items-center rounded-full border shadow-xs"
+        className="relative grid size-9 place-items-center rounded-full border shadow-xs"
         style={{ backgroundColor: value }}
       >
         <Palette className="size-4 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.65)]" />
@@ -137,7 +148,7 @@ function ColorButton({
           className="absolute inset-0 cursor-pointer opacity-0"
         />
       </span>
-      <span className="truncate text-[0.65rem] text-muted-foreground">{label}</span>
+      <span className="truncate text-[0.7rem] font-medium text-muted-foreground">{label}</span>
     </label>
   );
 }
@@ -146,11 +157,11 @@ function toInputColor(value: string) {
   return /^#[0-9a-fA-F]{6}$/.test(value) ? value : "#000000";
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Spec({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-w-0 items-baseline justify-between gap-3 rounded-xl bg-muted/70 px-3 py-2">
-      <dt className="shrink-0 text-xs text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 truncate text-right font-medium">{value}</dd>
+    <div className="grid min-w-0 gap-0.5 rounded-xl bg-muted/70 px-3 py-2 text-center">
+      <dt className="truncate text-[0.7rem] text-muted-foreground">{label}</dt>
+      <dd className="truncate text-sm font-semibold tabular-nums">{value}</dd>
     </div>
   );
 }
