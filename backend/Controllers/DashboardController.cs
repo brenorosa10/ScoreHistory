@@ -18,7 +18,7 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
         DateTime PlayedAt,
         string CourtType,
         string Score,
-        bool Won);
+        bool? Won);
 
     public sealed record DashboardSummaryResponse(
         int Matches,
@@ -56,9 +56,10 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             .ToListAsync(cancellationToken);
 
         var opponents = await db.Opponents.CountAsync(opponent => opponent.UserId == userId, cancellationToken);
-        var wins = matches.Count(match => match.Won);
-        var losses = matches.Count - wins;
-        var winRate = matches.Count == 0 ? 0 : (int)Math.Round(wins * 100d / matches.Count);
+        var wins = matches.Count(match => match.Won == true);
+        var losses = matches.Count(match => match.Won == false);
+        var decided = wins + losses;
+        var winRate = decided == 0 ? 0 : (int)Math.Round(wins * 100d / decided);
         var streak = BuildStreak(matches);
         var latest = matches.Count == 0 ? null : ToLatest(matches[0]);
 
@@ -118,13 +119,14 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
         }
 
         var first = matches[0];
-        var wins = matches.Count(match => match.Won);
+        var wins = matches.Count(match => match.Won == true);
+        var losses = matches.Count(match => match.Won == false);
         return Ok(new HeadToHeadResponse(
             first.OpponentId,
             first.Opponent?.Name ?? "Adversário",
             matches.Count,
             wins,
-            matches.Count - wins,
+            losses,
             first.Score));
     }
 
@@ -159,12 +161,13 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
 
     private static (bool Won, int Count)? BuildStreak(IReadOnlyList<Match> matches)
     {
-        if (matches.Count == 0)
+        var first = matches.FirstOrDefault(match => match.Won != null);
+        if (first is null)
         {
             return null;
         }
 
-        var won = matches[0].Won;
+        var won = first.Won!.Value;
         var count = 0;
         foreach (var match in matches)
         {
@@ -199,8 +202,8 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             map[match.OpponentId] = current with
             {
                 Played = current.Played + 1,
-                Wins = current.Wins + (match.Won ? 1 : 0),
-                Losses = current.Losses + (match.Won ? 0 : 1)
+                Wins = current.Wins + (match.Won == true ? 1 : 0),
+                Losses = current.Losses + (match.Won == false ? 1 : 0)
             };
         }
 
@@ -210,7 +213,7 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
     private static IReadOnlyList<string> BuildTips(IReadOnlyList<Match> matches)
     {
         var tips = new List<string>();
-        var losses = matches.Where(match => !match.Won).ToList();
+        var losses = matches.Where(match => match.Won == false).ToList();
         if (matches.Count >= 3 && losses.Count / (double)matches.Count >= 0.6)
         {
             tips.Add(

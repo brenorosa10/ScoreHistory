@@ -71,6 +71,7 @@ function toFormValues(opponent: Opponent): OpponentFormValues {
   return {
     name: opponent.name,
     handedness: opponent.handedness,
+    class: opponent.class ?? "",
     strengths: opponent.strengths ?? "",
     weaknesses: opponent.weaknesses ?? "",
     notes: opponent.notes ?? "",

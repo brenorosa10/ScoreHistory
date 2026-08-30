@@ -6,7 +6,8 @@ import { OpponentDetailsDialog } from "@/components/opponent-details-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatFullDate } from "@/lib/format";
+import { formatFullDate, opponentMeta } from "@/lib/format";
+import { resultBannerClass, resultLabel } from "@/lib/match-result";
 import { dashboardHeadToHeadByOpponentQueryOptions, matchQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +39,7 @@ export function MatchDetailPage() {
   const tips = [
     match.weaknesses ? `Trabalhe isto no treino: ${match.weaknesses}` : null,
     match.opponentStrengths ? `O adversário impôs: ${match.opponentStrengths}` : null,
-    !match.won ? "Revise o plano de jogo deste confronto antes do próximo duelo." : null,
+    match.won === false ? "Revise o plano de jogo deste confronto antes do próximo duelo." : null,
   ].filter((value): value is string => Boolean(value));
 
   const details = [
@@ -67,21 +68,18 @@ export function MatchDetailPage() {
 
       <main className="grid gap-5 px-4 pt-4">
         <section
-          className={cn(
-            "grid gap-3 rounded-2xl p-5 text-white shadow-lg",
-            match.won ? "bg-success" : "bg-destructive",
-          )}
+          className={cn("grid gap-3 rounded-2xl p-5 shadow-lg", resultBannerClass(match.won))}
         >
           <p className="text-sm font-semibold tracking-wide uppercase opacity-80">
-            {match.won ? "Vitória" : "Derrota"}
+            {resultLabel(match.won)}
           </p>
           <p className="text-4xl leading-none font-bold tabular-nums">{match.score}</p>
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium">
+            <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", match.won == null ? "bg-black/10" : "bg-white/20")}>
               {match.courtType}
             </span>
-            <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium">
-              Adversário {match.opponentHandedness.toLowerCase()}
+            <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", match.won == null ? "bg-black/10" : "bg-white/20")}>
+              {opponentMeta(match.opponentHandedness, match.opponentClass)}
             </span>
           </div>
         </section>

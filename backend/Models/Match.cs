@@ -7,7 +7,7 @@ public sealed class Match
     public Guid OpponentId { get; set; }
     public DateTime PlayedAt { get; set; } = DateTime.UtcNow;
     public required string Score { get; set; }
-    public bool Won { get; set; }
+    public bool? Won { get; set; }
     public required string CourtType { get; set; }
     public string? Notes { get; set; }
     public string? Strengths { get; set; }

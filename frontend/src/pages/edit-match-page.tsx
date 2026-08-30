@@ -92,7 +92,7 @@ function toFormValues(match: MatchRecord): MatchFormValues {
   return {
     opponentId: match.opponentId,
     sets: parseScore(match.score),
-    won: match.won ? "true" : "false",
+    won: match.won === true ? "true" : match.won === false ? "false" : "draw",
     courtType: COURT_TYPE_OPTIONS.includes(
       match.courtType as (typeof COURT_TYPE_OPTIONS)[number],
     )

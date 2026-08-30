@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { createOpponent, type OpponentPayload } from "@/lib/api";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { toInitials } from "@/lib/format";
+import { opponentMeta, toInitials } from "@/lib/format";
 import {
   dashboardQueryKey,
   opponentQueryOptions,
@@ -83,7 +83,9 @@ export function OpponentPicker({ value, onChange, invalid }: OpponentPickerProps
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{selected.name}</span>
-              <span className="block text-xs text-muted-foreground">{selected.handedness}</span>
+              <span className="block text-xs text-muted-foreground">
+                {opponentMeta(selected.handedness, selected.class)}
+              </span>
             </span>
           </>
         ) : (
@@ -165,7 +167,9 @@ export function OpponentPicker({ value, onChange, invalid }: OpponentPickerProps
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{opponent.name}</span>
-                      <span className="block text-xs text-muted-foreground">{opponent.handedness}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {opponentMeta(opponent.handedness, opponent.class)}
+                      </span>
                     </span>
                     {opponent.id === value ? <Check className="size-4 text-primary" /> : null}
                   </button>

@@ -5,7 +5,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HeadToHead } from "@/lib/api";
-import { toInitials } from "@/lib/format";
+import { opponentMeta, toInitials } from "@/lib/format";
 import { opponentQueryOptions } from "@/lib/queries";
 
 type OpponentDetailsDialogProps = {
@@ -23,7 +23,7 @@ export function OpponentDetailsDialog({ opponentId, h2h, onClose }: OpponentDeta
 
   const played = h2h?.played ?? opponent?.played ?? 0;
   const wins = h2h?.wins ?? opponent?.wins ?? 0;
-  const losses = h2h?.losses ?? (played > 0 ? played - wins : 0);
+  const losses = h2h?.losses ?? opponent?.losses ?? 0;
   const name = opponent?.name ?? "Adversário";
 
   return (
@@ -31,7 +31,13 @@ export function OpponentDetailsDialog({ opponentId, h2h, onClose }: OpponentDeta
       open={open}
       onClose={onClose}
       title={name}
-      description={opponent?.handedness ?? (isPending ? "Carregando perfil..." : undefined)}
+      description={
+        opponent
+          ? opponentMeta(opponent.handedness, opponent.class)
+          : isPending
+            ? "Carregando perfil..."
+            : undefined
+      }
     >
       {isPending ? (
         <div className="grid gap-3">
@@ -49,7 +55,9 @@ export function OpponentDetailsDialog({ opponentId, h2h, onClose }: OpponentDeta
             </span>
             <div className="min-w-0">
               <p className="truncate font-medium">{opponent.name}</p>
-              <p className="text-xs text-muted-foreground">{opponent.handedness}</p>
+              <p className="text-xs text-muted-foreground">
+                {opponentMeta(opponent.handedness, opponent.class)}
+              </p>
             </div>
           </div>
 

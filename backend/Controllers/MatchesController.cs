@@ -23,7 +23,7 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
     public sealed record MatchRequest(
         Guid OpponentId,
         string Score,
-        bool Won,
+        bool? Won,
         string CourtType,
         DateTime? PlayedAt,
         string? Notes,
@@ -37,9 +37,10 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
         Guid OpponentId,
         string OpponentName,
         string OpponentHandedness,
+        string? OpponentClass,
         DateTime PlayedAt,
         string Score,
-        bool Won,
+        bool? Won,
         string CourtType,
         string? Notes,
         string? Strengths,
@@ -67,11 +68,15 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
 
         if (string.Equals(filter, "wins", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.Where(match => match.Won);
+            query = query.Where(match => match.Won == true);
         }
         else if (string.Equals(filter, "losses", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.Where(match => !match.Won);
+            query = query.Where(match => match.Won == false);
+        }
+        else if (string.Equals(filter, "draws", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(match => match.Won == null);
         }
 
         query = query.OrderByDescending(match => match.PlayedAt);
@@ -240,6 +245,7 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
             match.OpponentId,
             match.Opponent?.Name ?? "Adversário",
             match.Opponent?.Handedness ?? "Destro",
+            match.Opponent?.Class,
             match.PlayedAt,
             match.Score,
             match.Won,

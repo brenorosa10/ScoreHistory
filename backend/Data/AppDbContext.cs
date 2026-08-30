@@ -29,6 +29,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasKey(opponent => opponent.Id);
             entity.HasIndex(opponent => opponent.UserId);
             entity.Property(opponent => opponent.Name).HasMaxLength(256).IsRequired();
+            entity.Property(opponent => opponent.Class).HasMaxLength(32);
             entity.Property(opponent => opponent.Handedness).HasMaxLength(16).IsRequired();
         });
 

@@ -51,14 +51,14 @@ export function OptionGroup({
 }
 
 type ResultToggleProps = {
-  value: "true" | "false";
-  onChange: (value: "true" | "false") => void;
+  value: "true" | "false" | "draw";
+  onChange: (value: "true" | "false" | "draw") => void;
 };
 
-/** Win/loss switch with color feedback, the most frequent choice in the match form. */
+/** Win/draw/loss switch with color feedback, the most frequent choice in the match form. */
 export function ResultToggle({ value, onChange }: ResultToggleProps) {
   return (
-    <div role="radiogroup" className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
+    <div role="radiogroup" className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
       <button
         type="button"
         role="radio"
@@ -70,6 +70,18 @@ export function ResultToggle({ value, onChange }: ResultToggleProps) {
         )}
       >
         Vitória
+      </button>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={value === "draw"}
+        onClick={() => onChange("draw")}
+        className={cn(
+          "h-10 rounded-lg text-sm font-semibold transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+          value === "draw" ? "bg-warning text-foreground shadow-sm" : "text-muted-foreground",
+        )}
+      >
+        Empate
       </button>
       <button
         type="button"

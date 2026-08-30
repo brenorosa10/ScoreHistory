@@ -85,16 +85,19 @@ export type Opponent = {
   id: string;
   name: string;
   handedness: string;
+  class: string | null;
   strengths: string | null;
   weaknesses: string | null;
   notes: string | null;
   played?: number;
   wins?: number;
+  losses?: number;
 };
 
 export type OpponentPayload = {
   name: string;
   handedness: string;
+  class: string;
   strengths?: string;
   weaknesses?: string;
   notes?: string;
@@ -105,9 +108,10 @@ export type MatchRecord = {
   opponentId: string;
   opponentName: string;
   opponentHandedness: string;
+  opponentClass?: string | null;
   playedAt: string;
   score: string;
-  won: boolean;
+  won: boolean | null;
   courtType: string;
   notes: string | null;
   strengths: string | null;
@@ -119,7 +123,7 @@ export type MatchRecord = {
 export type MatchPayload = {
   opponentId: string;
   score: string;
-  won: boolean;
+  won: boolean | null;
   courtType: string;
   playedAt?: string;
   notes?: string;
@@ -145,7 +149,7 @@ export type ListOpponentsParams = {
   search?: string;
 };
 
-export type MatchFilter = "all" | "wins" | "losses";
+export type MatchFilter = "all" | "wins" | "losses" | "draws";
 
 export type ListMatchesParams = {
   page?: number;
@@ -167,7 +171,7 @@ export type DashboardSummary = {
     playedAt: string;
     courtType: string;
     score: string;
-    won: boolean;
+    won: boolean | null;
   } | null;
 };
 

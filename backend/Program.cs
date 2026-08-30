@@ -137,6 +137,7 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
                 "Id" uuid NOT NULL,
                 "UserId" uuid NOT NULL,
                 "Name" character varying(256) NOT NULL,
+                "Class" character varying(32),
                 "Strengths" text,
                 "Weaknesses" text,
                 "Notes" text,
@@ -152,7 +153,7 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
                 "OpponentId" uuid NOT NULL,
                 "PlayedAt" timestamp with time zone NOT NULL,
                 "Score" character varying(64) NOT NULL,
-                "Won" boolean NOT NULL,
+                "Won" boolean,
                 "CourtType" character varying(32) NOT NULL,
                 "Notes" text,
                 "Strengths" text,
@@ -197,6 +198,8 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
             ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "FrameColor" character varying(7) NOT NULL DEFAULT '#1f2937';
             ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "StringColor" character varying(7) NOT NULL DEFAULT '#e5e7eb';
             ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "GripColor" character varying(7) NOT NULL DEFAULT '#44403c';
+            ALTER TABLE opponents ADD COLUMN IF NOT EXISTS "Class" character varying(32);
+            ALTER TABLE matches ALTER COLUMN "Won" DROP NOT NULL;
             """);
         await scope.ServiceProvider.GetRequiredService<UserStore>().EnsureDemoUserAsync();
     }

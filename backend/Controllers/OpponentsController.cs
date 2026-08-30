@@ -13,9 +13,24 @@ namespace ScoreHistory.Api.Controllers;
 [Route("api/opponents")]
 public sealed class OpponentsController(AppDbContext db) : ControllerBase
 {
+    private static readonly HashSet<string> Classes =
+    [
+        "1ª classe",
+        "2ª classe",
+        "3ª classe",
+        "4ª classe",
+        "5ª classe",
+        "6ª classe",
+        "40B",
+        "40A",
+        "50A",
+        "50B"
+    ];
+
     public sealed record OpponentRequest(
         string Name,
         string Handedness,
+        string? Class,
         string? Strengths,
         string? Weaknesses,
         string? Notes);
@@ -24,11 +39,13 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
         Guid Id,
         string Name,
         string Handedness,
+        string? Class,
         string? Strengths,
         string? Weaknesses,
         string? Notes,
         int Played,
-        int Wins);
+        int Wins,
+        int Losses);
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<OpponentResponse>>> List(
@@ -62,11 +79,13 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
                 opponent.Id,
                 opponent.Name,
                 opponent.Handedness,
+                opponent.Class,
                 opponent.Strengths,
                 opponent.Weaknesses,
                 opponent.Notes,
                 db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue),
-                db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won)))
+                db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == true),
+                db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == false)))
             .ToListAsync(cancellationToken);
 
         return Ok(new PagedResult<OpponentResponse>(opponents, resolvedPage, resolvedPageSize, totalCount));
@@ -113,11 +132,17 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
             return BadRequest(new { message = "Informe se o adversário é canhoto ou destro." });
         }
 
+        if (!IsValidClass(request.Class))
+        {
+            return BadRequest(new { message = "Informe a classe do adversário." });
+        }
+
         var opponent = new Opponent
         {
             UserId = userId.Value,
             Name = request.Name.Trim(),
             Handedness = request.Handedness,
+            Class = request.Class!.Trim(),
             Strengths = TrimToNull(request.Strengths),
             Weaknesses = TrimToNull(request.Weaknesses),
             Notes = TrimToNull(request.Notes)
@@ -158,8 +183,14 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
             return BadRequest(new { message = "Informe se o adversário é canhoto ou destro." });
         }
 
+        if (!IsValidClass(request.Class))
+        {
+            return BadRequest(new { message = "Informe a classe do adversário." });
+        }
+
         opponent.Name = request.Name.Trim();
         opponent.Handedness = request.Handedness;
+        opponent.Class = request.Class!.Trim();
         opponent.Strengths = TrimToNull(request.Strengths);
         opponent.Weaknesses = TrimToNull(request.Weaknesses);
         opponent.Notes = TrimToNull(request.Notes);
@@ -168,8 +199,11 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
         return Ok(ToResponse(opponent));
     }
 
-    private static OpponentResponse ToResponse(Opponent opponent, int played = 0, int wins = 0) =>
-        new(opponent.Id, opponent.Name, opponent.Handedness, opponent.Strengths, opponent.Weaknesses, opponent.Notes, played, wins);
+    private static OpponentResponse ToResponse(Opponent opponent, int played = 0, int wins = 0, int losses = 0) =>
+        new(opponent.Id, opponent.Name, opponent.Handedness, opponent.Class, opponent.Strengths, opponent.Weaknesses, opponent.Notes, played, wins, losses);
+
+    private static bool IsValidClass(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && Classes.Contains(value.Trim());
 
     private static string? TrimToNull(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

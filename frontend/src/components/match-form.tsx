@@ -10,12 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useScrollToFieldError } from "@/hooks/use-scroll-to-field-error";
 import type { MatchPayload } from "@/lib/api";
 import { COURT_TYPE_OPTIONS } from "@/lib/constants";
-import { emptySet, formatScore, hasResult, resolveWinner, type ScoreEntry } from "@/lib/score";
+import { emptySet, formatScore, hasPlayedScore, hasResult, resolveWinner, type ScoreEntry } from "@/lib/score";
 
 export type MatchFormValues = {
   opponentId: string;
   sets: ScoreEntry[];
-  won: "true" | "false";
+  won: "true" | "false" | "draw";
   courtType: string;
   playedAt: string;
   notes: string;
@@ -76,7 +76,12 @@ export function MatchForm({
   const sets = watch("sets");
   const won = watch("won");
   const scoreWinner = resolveWinner(sets);
-  const scoreMismatch = scoreWinner !== null && (scoreWinner === "home") !== (won === "true");
+  const scoreMismatch =
+    won === "draw"
+      ? scoreWinner !== null
+      : scoreWinner !== null && (scoreWinner === "home") !== (won === "true");
+  const mismatchLabel =
+    won === "draw" ? "empate" : won === "true" ? "vitória" : "derrota";
   useScrollToFieldError(formRef, submitCount);
 
   return (
@@ -87,7 +92,7 @@ export function MatchForm({
         onSubmit({
           opponentId: values.opponentId,
           score: formatScore(values.sets),
-          won: values.won === "true",
+          won: values.won === "draw" ? null : values.won === "true",
           courtType: values.courtType,
           playedAt: new Date(`${values.playedAt}T12:00:00`).toISOString(),
           notes: values.notes,
@@ -110,14 +115,24 @@ export function MatchForm({
             control={control}
             name="sets"
             rules={{
-              validate: (value) => hasResult(value) || "Informe os games de pelo menos um set.",
+              validate: (value) => {
+                if (won === "draw") {
+                  return hasPlayedScore(value) || "Informe o placar da partida.";
+                }
+                if (hasResult(value)) {
+                  return true;
+                }
+                return hasPlayedScore(value)
+                  ? "O placar está empatado. Marque empate ou ajuste os games."
+                  : "Informe os games de pelo menos um set.";
+              },
             }}
             render={({ field }) => <ScoreBuilder value={field.value} onChange={field.onChange} />}
           />
           {scoreMismatch ? (
             <p className="rounded-xl bg-warning/10 px-3 py-2 text-sm text-foreground">
               O placar aponta {scoreWinner === "home" ? "vitória" : "derrota"}, mas você marcou{" "}
-              {won === "true" ? "vitória" : "derrota"}.
+              {mismatchLabel}.
             </p>
           ) : null}
         </Field>

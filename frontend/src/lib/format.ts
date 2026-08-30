@@ -50,3 +50,7 @@ export function toInitials(value: string): string {
   const parts = value.trim().split(/\s+/).slice(0, 2);
   return parts.map((part) => part.charAt(0).toUpperCase()).join("") || "?";
 }
+
+export function opponentMeta(handedness: string, playingClass?: string | null): string {
+  return [handedness, playingClass].filter(Boolean).join(" · ");
+}

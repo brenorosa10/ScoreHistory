@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DEFAULT_PAGE_SIZE } from "@/lib/api";
-import { toInitials } from "@/lib/format";
+import { opponentMeta, toInitials } from "@/lib/format";
 import { opponentsQueryOptions } from "@/lib/queries";
 
 export function OpponentsPage() {
@@ -119,6 +119,7 @@ export function OpponentsPage() {
             {opponents.map((opponent) => {
               const played = opponent.played ?? 0;
               const wins = opponent.wins ?? 0;
+              const losses = opponent.losses ?? Math.max(0, played - wins);
 
               return (
                 <article
@@ -131,12 +132,14 @@ export function OpponentsPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{opponent.name}</p>
-                      <p className="text-xs text-muted-foreground">{opponent.handedness}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {opponentMeta(opponent.handedness, opponent.class)}
+                      </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {played > 0 ? (
                         <Badge variant="outline">
-                          H2H {wins}-{played - wins}
+                          H2H {wins}-{losses}
                         </Badge>
                       ) : (
                         <Badge variant="outline">Sem jogos</Badge>

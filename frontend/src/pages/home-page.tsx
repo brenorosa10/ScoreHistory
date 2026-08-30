@@ -5,6 +5,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatShortDate } from "@/lib/format";
+import { resultBadgeClass, resultLetter } from "@/lib/match-result";
 import { dashboardSummaryQueryOptions, meQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -65,12 +66,10 @@ export function HomePage() {
               <span
                 className={cn(
                   "grid size-12 shrink-0 place-items-center rounded-xl text-base font-bold",
-                  latest.won
-                    ? "bg-success/12 text-success"
-                    : "bg-destructive/12 text-destructive",
+                  resultBadgeClass(latest.won),
                 )}
               >
-                {latest.won ? "V" : "D"}
+                {resultLetter(latest.won)}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{latest.opponentName}</p>

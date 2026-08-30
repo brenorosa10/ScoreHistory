@@ -3,6 +3,7 @@ import { ChevronRight, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { MatchRecord } from "@/lib/api";
 import { formatShortDate } from "@/lib/format";
+import { resultBadgeClass, resultLetter } from "@/lib/match-result";
 import { cn } from "@/lib/utils";
 
 const ACTION_WIDTH = 88;
@@ -154,10 +155,10 @@ export function SwipeableMatchRow({
           <span
             className={cn(
               "grid size-11 shrink-0 place-items-center rounded-xl text-sm font-bold",
-              match.won ? "bg-success/12 text-success" : "bg-destructive/12 text-destructive",
+              resultBadgeClass(match.won),
             )}
           >
-            {match.won ? "V" : "D"}
+            {resultLetter(match.won)}
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium">{match.opponentName}</p>

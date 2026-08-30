@@ -3,15 +3,17 @@ import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { OptionGroup } from "@/components/ui/option-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useScrollToFieldError } from "@/hooks/use-scroll-to-field-error";
-import { HANDEDNESS_OPTIONS } from "@/lib/constants";
+import { HANDEDNESS_OPTIONS, OPPONENT_CLASS_OPTIONS } from "@/lib/constants";
 import type { OpponentPayload } from "@/lib/api";
 
 export type OpponentFormValues = {
   name: string;
   handedness: string;
+  class: string;
   strengths: string;
   weaknesses: string;
   notes: string;
@@ -37,6 +39,7 @@ export function OpponentForm({ defaultValues, submitLabel, pending, onSubmit }: 
     defaultValues: {
       name: "",
       handedness: "Destro",
+      class: "",
       strengths: "",
       weaknesses: "",
       notes: "",
@@ -53,6 +56,7 @@ export function OpponentForm({ defaultValues, submitLabel, pending, onSubmit }: 
         onSubmit({
           name: values.name,
           handedness: values.handedness,
+          class: values.class,
           strengths: values.strengths,
           weaknesses: values.weaknesses,
           notes: values.notes,
@@ -67,6 +71,21 @@ export function OpponentForm({ defaultValues, submitLabel, pending, onSubmit }: 
           aria-invalid={errors.name ? true : undefined}
           {...register("name", { required: "Informe o nome." })}
         />
+      </Field>
+
+      <Field label="Classe" htmlFor="opponent-class" error={errors.class?.message}>
+        <NativeSelect
+          id="opponent-class"
+          aria-invalid={errors.class ? true : undefined}
+          {...register("class", { required: "Selecione a classe." })}
+        >
+          <option value="">Selecione a classe</option>
+          {OPPONENT_CLASS_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </NativeSelect>
       </Field>
 
       <Field label="Mão dominante" htmlFor="handedness">

@@ -82,6 +82,10 @@ export function hasResult(entries: ScoreEntry[]): boolean {
   return entries.some((entry) => entry.home !== entry.away);
 }
 
+export function hasPlayedScore(entries: ScoreEntry[]): boolean {
+  return entries.some((entry) => entry.home !== "0" || entry.away !== "0");
+}
+
 /** Who took more sets, so the form can warn when the score contradicts the selected result. */
 export function resolveWinner(entries: ScoreEntry[]): "home" | "away" | null {
   let home = 0;
