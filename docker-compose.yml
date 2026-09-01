@@ -45,21 +45,13 @@ services:
       - "443:443/udp"
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS}
-      ASTRO_ADDRESS: ${ASTRO_ADDRESS:-astro.localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
       - frontend
-    networks:
-      - default
-      - proxy
 
 volumes:
   caddy_data:
   caddy_config:
-
-networks:
-  proxy:
-    external: true
