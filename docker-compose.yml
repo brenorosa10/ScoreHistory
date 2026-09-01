@@ -14,6 +14,14 @@ services:
       Cors__Origins: ${Cors__Origins:-http://localhost}
     expose:
       - "8080"
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 25s
 
   frontend:
     build:
@@ -23,7 +31,10 @@ services:
     expose:
       - "80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    networks:
+      - default
 
   caddy:
     image: caddy:2-alpine
