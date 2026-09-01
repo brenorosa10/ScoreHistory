@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 var listenPort = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(listenPort))
 {
-    builder.WebHost.UseUrls($"http://0.0.0.0:{listenPort}");
+    builder.WebHost.UseUrls($"http://+:{listenPort}");
 }
 
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
