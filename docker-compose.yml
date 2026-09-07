@@ -27,6 +27,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: scorehistory-frontend
     restart: unless-stopped
     expose:
       - "80"
@@ -35,23 +36,8 @@ services:
         condition: service_healthy
     networks:
       - default
+      - proxy
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    environment:
-      SITE_ADDRESS: ${SITE_ADDRESS}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
-
-volumes:
-  caddy_data:
-  caddy_config:
+networks:
+  proxy:
+    external: true

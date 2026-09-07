@@ -60,12 +60,17 @@ A API usa PostgreSQL. A connection string fica em `backend/appsettings.Local.jso
 
 No primeiro `dotnet run`, a tabela `users` é criada e o usuário de desenvolvimento é inserido se ainda não existir.
 
-## Deploy na VPS
+## Deploy na VPS (junto com o Astro)
 
-No clone do repositório, com o `.env` na raiz (veja `env.example`):
+O nginx de borda fica em `~/proxy` (cópia de `Projeto_TCC/deploy/proxy`). Ele escuta 80/443 e encaminha:
 
-```bash
-./scripts/deploy.sh
-```
+- `scorehistory.tech` → container `scorehistory-frontend`
+- `astroarq.online` → container `astro-frontend`
 
-O script faz `git pull` e sobe de novo o `docker compose`.
+Neste compose **não** publique 80/443. O nginx interno do frontend só faz proxy de `/api` para o backend.
+
+1. DNS: `scorehistory.tech` e `www.scorehistory.tech` → IP da VPS (sem AAAA de parking).
+2. Na VPS: `docker network create proxy` (uma vez).
+3. Suba o proxy: copie `Projeto_TCC/deploy/proxy/` para `~/proxy`, preencha `CERTBOT_EMAIL` e rode `./obter-certs.sh`.
+4. Neste repositório: `.env` a partir de `env.example`, com `Cors__Origins=https://scorehistory.tech`.
+5. `./scripts/deploy.sh` (ou `docker compose up -d --build --remove-orphans`)
