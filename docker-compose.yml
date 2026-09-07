@@ -22,7 +22,6 @@ services:
       timeout: 3s
       retries: 6
       start_period: 25s
-
   frontend:
     build:
       context: ./frontend
