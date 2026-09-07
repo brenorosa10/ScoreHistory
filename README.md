@@ -74,3 +74,5 @@ Neste compose **não** publique 80/443. O nginx interno do frontend só faz prox
 3. Suba o proxy: copie `Projeto_TCC/deploy/proxy/` para `~/proxy`, preencha `CERTBOT_EMAIL` e rode `./obter-certs.sh`.
 4. Neste repositório: `.env` a partir de `env.example`, com `Cors__Origins=https://scorehistory.tech`.
 5. `./scripts/deploy.sh` (ou `docker compose up -d --build --remove-orphans`)
+
+`--remove-orphans` remove o Caddy antigo, se ainda existir na VPS.
