@@ -28,6 +28,16 @@ export function resultBadgeClass(won: boolean | null): string {
   return "bg-warning/15 text-warning";
 }
 
+export function resultStripeClass(won: boolean | null): string {
+  if (won === true) {
+    return "bg-success";
+  }
+  if (won === false) {
+    return "bg-destructive";
+  }
+  return "bg-warning";
+}
+
 export function resultBannerClass(won: boolean | null): string {
   if (won === true) {
     return "bg-success text-white";

@@ -205,6 +205,7 @@ export type RacketRecord = {
   stringColor: string;
   gripColor: string;
   services: RacketServiceRecord[];
+  purchasePrice: number | null;
 };
 
 export type RacketServicePayload = {
@@ -224,6 +225,7 @@ export type RacketPayload = {
   frameColor?: string;
   stringColor?: string;
   gripColor?: string;
+  purchasePrice?: number | null;
   services?: RacketServicePayload[];
 };
 
@@ -384,4 +386,48 @@ export async function updateRacket(id: string, payload: RacketPayload): Promise<
     body: JSON.stringify(payload),
   });
   return parseJson(response, "Não foi possível atualizar a raquete.");
+}
+
+export type FinanceRacketPrice = {
+  id: string;
+  name: string;
+  purchasePrice: number | null;
+};
+
+export type FinanceRecord = {
+  lessonPrice: number | null;
+  clubPrice: number | null;
+  ballCanPrice: number | null;
+  stringPrice: number | null;
+  overgripPrice: number | null;
+  cushionGripPrice: number | null;
+  ballName: string | null;
+  lastBallCanOpenedAt: string | null;
+  rackets: FinanceRacketPrice[];
+};
+
+export type FinancePayload = {
+  lessonPrice?: number | null;
+  clubPrice?: number | null;
+  ballCanPrice?: number | null;
+  stringPrice?: number | null;
+  overgripPrice?: number | null;
+  cushionGripPrice?: number | null;
+  ballName?: string | null;
+  lastBallCanOpenedAt?: string | null;
+  rackets?: { id: string; purchasePrice?: number | null }[];
+};
+
+export async function getFinance(): Promise<FinanceRecord> {
+  const response = await fetch(`${API_URL}/api/finance`, { headers: authHeaders() });
+  return parseJson(response, "Não foi possível carregar o financeiro.");
+}
+
+export async function updateFinance(payload: FinancePayload): Promise<FinanceRecord> {
+  const response = await fetch(`${API_URL}/api/finance`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseJson(response, "Não foi possível salvar o financeiro.");
 }

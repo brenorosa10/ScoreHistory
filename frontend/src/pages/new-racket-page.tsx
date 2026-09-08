@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { RacketForm } from "@/components/racket-form";
 import { createRacket, type RacketPayload } from "@/lib/api";
-import { racketsQueryKey } from "@/lib/queries";
+import { financeQueryKey, racketsQueryKey } from "@/lib/queries";
 
 export function NewRacketPage() {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ export function NewRacketPage() {
     mutationFn: (payload: RacketPayload) => createRacket(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: racketsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: financeQueryKey });
       await navigate({ to: "/perfil" });
     },
   });

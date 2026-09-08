@@ -26,6 +26,7 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
         string? StringName,
         decimal? TensionLb,
         string? Grip,
+        decimal? PurchasePrice,
         string? Notes,
         string? FrameColor,
         string? StringColor,
@@ -45,6 +46,7 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
         string? StringName,
         decimal? TensionLb,
         string? Grip,
+        decimal? PurchasePrice,
         string? Notes,
         string FrameColor,
         string StringColor,
@@ -108,6 +110,11 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
             return BadRequest(new { message = error });
         }
 
+        if (request.PurchasePrice is < 0)
+        {
+            return BadRequest(new { message = "Informe um valor maior ou igual a zero." });
+        }
+
         var racket = new Racket
         {
             UserId = userId.Value,
@@ -115,6 +122,7 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
             StringName = TrimToNull(request.StringName),
             TensionLb = request.TensionLb,
             Grip = TrimToNull(request.Grip),
+            PurchasePrice = request.PurchasePrice,
             Notes = TrimToNull(request.Notes),
             FrameColor = NormalizeColor(request.FrameColor, "#1f2937"),
             StringColor = NormalizeColor(request.StringColor, "#e5e7eb"),
@@ -149,6 +157,11 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
             return BadRequest(new { message = error });
         }
 
+        if (request.PurchasePrice is < 0)
+        {
+            return BadRequest(new { message = "Informe um valor maior ou igual a zero." });
+        }
+
         var owned = await db.Rackets.AsNoTracking()
             .AnyAsync(racket => racket.Id == id && racket.UserId == userId, cancellationToken);
         if (!owned)
@@ -178,6 +191,7 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
                     .SetProperty(racket => racket.StringName, stringName)
                     .SetProperty(racket => racket.TensionLb, request.TensionLb)
                     .SetProperty(racket => racket.Grip, grip)
+                    .SetProperty(racket => racket.PurchasePrice, request.PurchasePrice)
                     .SetProperty(racket => racket.Notes, notes)
                     .SetProperty(racket => racket.FrameColor, frameColor)
                     .SetProperty(racket => racket.StringColor, stringColor)
@@ -266,6 +280,7 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
             racket.StringName,
             racket.TensionLb,
             racket.Grip,
+            racket.PurchasePrice,
             racket.Notes,
             racket.FrameColor,
             racket.StringColor,

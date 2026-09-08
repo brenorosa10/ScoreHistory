@@ -5,7 +5,8 @@ import { RacketForm, type RacketFormValues } from "@/components/racket-form";
 import { DEFAULT_FRAME_COLOR, DEFAULT_GRIP_COLOR, DEFAULT_STRING_COLOR } from "@/components/racket-preview";
 import { Skeleton } from "@/components/ui/skeleton";
 import { updateRacket, type RacketPayload, type RacketRecord } from "@/lib/api";
-import { racketQueryOptions, racketsQueryKey } from "@/lib/queries";
+import { moneyToInput } from "@/lib/format";
+import { financeQueryKey, racketQueryOptions, racketsQueryKey } from "@/lib/queries";
 
 export function EditRacketPage() {
   const { racketId } = useParams({ from: "/app/perfil/raquetes/$racketId/editar" });
@@ -18,6 +19,7 @@ export function EditRacketPage() {
     onSuccess: async (updated) => {
       queryClient.setQueryData([...racketsQueryKey, racketId], updated);
       await queryClient.invalidateQueries({ queryKey: racketsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: financeQueryKey });
       await navigate({ to: "/perfil", replace: true });
     },
   });
@@ -70,6 +72,7 @@ function toFormValues(racket: RacketRecord): RacketFormValues {
     stringName: racket.stringName ?? "",
     tensionLb: racket.tensionLb != null ? String(racket.tensionLb) : "",
     grip: racket.grip ?? "",
+    purchasePrice: moneyToInput(racket.purchasePrice),
     notes: racket.notes ?? "",
     frameColor: racket.frameColor || DEFAULT_FRAME_COLOR,
     stringColor: racket.stringColor || DEFAULT_STRING_COLOR,

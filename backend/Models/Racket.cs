@@ -9,6 +9,7 @@ public sealed class Racket
     public decimal? TensionLb { get; set; }
     public string? Grip { get; set; }
     public string? Notes { get; set; }
+    public decimal? PurchasePrice { get; set; }
     public string FrameColor { get; set; } = "#1f2937";
     public string StringColor { get; set; } = "#e5e7eb";
     public string GripColor { get; set; } = "#44403c";

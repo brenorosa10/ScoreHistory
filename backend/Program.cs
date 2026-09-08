@@ -195,11 +195,26 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
             );
             CREATE INDEX IF NOT EXISTS "IX_racket_services_RacketId" ON racket_services ("RacketId");
 
+            CREATE TABLE IF NOT EXISTS user_finance (
+                "UserId" uuid NOT NULL,
+                "LessonPrice" numeric(10,2),
+                "ClubPrice" numeric(10,2),
+                "BallCanPrice" numeric(10,2),
+                "StringPrice" numeric(10,2),
+                "OvergripPrice" numeric(10,2),
+                "CushionGripPrice" numeric(10,2),
+                "BallName" character varying(256),
+                "LastBallCanOpenedAt" timestamp with time zone,
+                CONSTRAINT "PK_user_finance" PRIMARY KEY ("UserId"),
+                CONSTRAINT "FK_user_finance_users_UserId" FOREIGN KEY ("UserId") REFERENCES users ("Id") ON DELETE CASCADE
+            );
+
             ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "FrameColor" character varying(7) NOT NULL DEFAULT '#1f2937';
             ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "StringColor" character varying(7) NOT NULL DEFAULT '#e5e7eb';
             ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "GripColor" character varying(7) NOT NULL DEFAULT '#44403c';
             ALTER TABLE opponents ADD COLUMN IF NOT EXISTS "Class" character varying(32);
             ALTER TABLE matches ALTER COLUMN "Won" DROP NOT NULL;
+            ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "PurchasePrice" numeric(10,2);
             """);
         await scope.ServiceProvider.GetRequiredService<UserStore>().EnsureDemoUserAsync();
     }

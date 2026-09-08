@@ -61,7 +61,7 @@ export function RacketServiceHistory({ services, onRemove }: RacketServiceHistor
                 <Icon className="size-3.5" />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-xs text-muted-foreground">{kind}</p>
+                <p className="truncate text-xs text-muted-foreground">{SERVICE_KIND_META[kind].label}</p>
                 <p className="truncate text-sm font-medium">{formatRelativeDays(service.changedAt)}</p>
               </div>
             </div>
@@ -80,7 +80,7 @@ export function RacketServiceHistory({ services, onRemove }: RacketServiceHistor
           {kindsUsed.map((kind) => (
             <FilterChip
               key={kind}
-              label={kind}
+              label={SERVICE_KIND_META[kind].label}
               count={entries.filter((entry) => entry.service.kind === kind).length}
               active={filter === kind}
               onClick={() => setFilter(kind)}
@@ -114,7 +114,7 @@ export function RacketServiceHistory({ services, onRemove }: RacketServiceHistor
               <div className={cn("flex min-w-0 items-start gap-2", isLast ? "pb-0" : "pb-4")}>
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                    <span className="text-sm font-semibold">{service.kind}</span>
+                    <span className="text-sm font-semibold">{SERVICE_KIND_META[service.kind].label}</span>
                     {service.tensionLb != null ? (
                       <Badge variant="outline" className="tabular-nums">
                         {service.tensionLb} lb
@@ -134,7 +134,7 @@ export function RacketServiceHistory({ services, onRemove }: RacketServiceHistor
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`Remover troca de ${service.kind}`}
+                    aria-label={`Remover troca de ${SERVICE_KIND_META[service.kind].label}`}
                     className="shrink-0 text-muted-foreground"
                     onClick={() => onRemove(service.id, index)}
                   >

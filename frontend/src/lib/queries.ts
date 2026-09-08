@@ -6,6 +6,7 @@ import {
   getDashboardHeadToHeadByOpponent,
   getDashboardSummary,
   getDashboardTips,
+  getFinance,
   getMatch,
   getOpponent,
   getRacket,
@@ -25,6 +26,7 @@ export const opponentsQueryKey = ["opponents"] as const;
 export const matchesQueryKey = ["matches"] as const;
 export const dashboardQueryKey = ["dashboard"] as const;
 export const racketsQueryKey = ["rackets"] as const;
+export const financeQueryKey = ["finance"] as const;
 
 export const meQueryOptions = () =>
   queryOptions({
@@ -116,4 +118,10 @@ export const racketQueryOptions = (id: string) =>
   queryOptions({
     queryKey: [...racketsQueryKey, id] as const,
     queryFn: () => getRacket(id),
+  });
+
+export const financeQueryOptions = () =>
+  queryOptions({
+    queryKey: financeQueryKey,
+    queryFn: getFinance,
   });

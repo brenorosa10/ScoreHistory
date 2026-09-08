@@ -10,6 +10,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<Racket> Rackets => Set<Racket>();
     public DbSet<RacketService> RacketServices => Set<RacketService>();
+    public DbSet<UserFinance> UserFinances => Set<UserFinance>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +56,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(racket => racket.StringName).HasMaxLength(256);
             entity.Property(racket => racket.TensionLb).HasPrecision(5, 1);
             entity.Property(racket => racket.Grip).HasMaxLength(256);
+            entity.Property(racket => racket.PurchasePrice).HasPrecision(10, 2);
             entity.Property(racket => racket.FrameColor).HasMaxLength(7);
             entity.Property(racket => racket.StringColor).HasMaxLength(7);
             entity.Property(racket => racket.GripColor).HasMaxLength(7);
@@ -72,6 +74,23 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(service => service.Kind).HasMaxLength(32).IsRequired();
             entity.Property(service => service.Detail).HasMaxLength(256);
             entity.Property(service => service.TensionLb).HasPrecision(5, 1);
+        });
+
+        modelBuilder.Entity<UserFinance>(entity =>
+        {
+            entity.ToTable("user_finance");
+            entity.HasKey(finance => finance.UserId);
+            entity.Property(finance => finance.LessonPrice).HasPrecision(10, 2);
+            entity.Property(finance => finance.ClubPrice).HasPrecision(10, 2);
+            entity.Property(finance => finance.BallCanPrice).HasPrecision(10, 2);
+            entity.Property(finance => finance.StringPrice).HasPrecision(10, 2);
+            entity.Property(finance => finance.OvergripPrice).HasPrecision(10, 2);
+            entity.Property(finance => finance.CushionGripPrice).HasPrecision(10, 2);
+            entity.Property(finance => finance.BallName).HasMaxLength(256);
+            entity.HasOne<User>()
+                .WithOne()
+                .HasForeignKey<UserFinance>(finance => finance.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

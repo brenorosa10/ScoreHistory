@@ -10,12 +10,14 @@ import { Input } from "@/components/ui/input";
 import { OptionGroup } from "@/components/ui/option-group";
 import { Textarea } from "@/components/ui/textarea";
 import type { RacketPayload, RacketServiceKind, RacketServicePayload } from "@/lib/api";
+import { parseMoney } from "@/lib/format";
 
 export type RacketFormValues = {
   name: string;
   stringName: string;
   tensionLb: string;
   grip: string;
+  purchasePrice: string;
   notes: string;
   frameColor: string;
   stringColor: string;
@@ -33,7 +35,7 @@ type RacketFormProps = {
 const serviceKinds: { value: RacketServiceKind; label: string }[] = [
   { value: "Corda", label: "Corda" },
   { value: "Overgrip", label: "Overgrip" },
-  { value: "Grip", label: "Grip" },
+  { value: "Grip", label: "Cushion grip" },
   { value: "Outro", label: "Outro" },
 ];
 
@@ -68,6 +70,7 @@ export function RacketForm({
       stringName: "",
       tensionLb: "",
       grip: "",
+      purchasePrice: "",
       notes: "",
       frameColor: DEFAULT_FRAME_COLOR,
       stringColor: DEFAULT_STRING_COLOR,
@@ -136,6 +139,7 @@ export function RacketForm({
           stringName: values.stringName,
           tensionLb: parseTension(values.tensionLb),
           grip: values.grip,
+          purchasePrice: parseMoney(values.purchasePrice),
           notes: values.notes,
           frameColor: values.frameColor,
           stringColor: values.stringColor,
@@ -153,7 +157,7 @@ export function RacketForm({
         <SectionHeader
           icon={<Settings2 className="size-4" />}
           title="Configuração"
-          description="Modelo, corda, tensão e grip em uso."
+          description="Modelo, corda, tensão, cushion grip e valor."
         />
 
         <Field label="Raquete" htmlFor="racket-name" error={errors.name?.message}>
@@ -192,12 +196,30 @@ export function RacketForm({
               })}
             />
           </Field>
-          <Field label="Grip" htmlFor="racket-grip" hint="opcional">
+          <Field label="Cushion grip" htmlFor="racket-grip" hint="opcional">
             <Input
               id="racket-grip"
               className="bg-background"
-              placeholder="Ex.: Wilson Pro Overgrip"
+              placeholder="Ex.: Wilson Comfort"
               {...register("grip")}
+            />
+          </Field>
+          <Field
+            label="Valor da raquete"
+            htmlFor="racket-price"
+            hint="R$"
+            error={errors.purchasePrice?.message}
+          >
+            <Input
+              id="racket-price"
+              inputMode="decimal"
+              className="bg-background tabular-nums"
+              placeholder="Ex.: 1200"
+              aria-invalid={errors.purchasePrice ? true : undefined}
+              {...register("purchasePrice", {
+                validate: (value) =>
+                  !value.trim() || parseMoney(value) != null || "Informe um valor válido.",
+              })}
             />
           </Field>
         </div>
@@ -260,7 +282,15 @@ export function RacketForm({
               <Input
                 id="service-detail"
                 className="bg-background"
-                placeholder={kind === "Corda" ? "Modelo da corda" : kind === "Overgrip" ? "Modelo do overgrip" : "O que foi trocado"}
+                placeholder={
+                  kind === "Corda"
+                    ? "Modelo da corda"
+                    : kind === "Overgrip"
+                      ? "Modelo do overgrip"
+                      : kind === "Grip"
+                        ? "Modelo do cushion grip"
+                        : "O que foi trocado"
+                }
                 value={detail}
                 onChange={(event) => setDetail(event.target.value)}
               />

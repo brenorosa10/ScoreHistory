@@ -54,3 +54,50 @@ export function toInitials(value: string): string {
 export function opponentMeta(handedness: string, playingClass?: string | null): string {
   return [handedness, playingClass].filter(Boolean).join(" · ");
 }
+
+const moneyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+export function formatMoney(value: number | null | undefined): string {
+  if (value == null) {
+    return "—";
+  }
+  return moneyFormatter.format(value);
+}
+
+export function moneyToInput(value: number | null | undefined): string {
+  if (value == null) {
+    return "";
+  }
+  return String(value).replace(".", ",");
+}
+
+export function parseMoney(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number(trimmed.replace(",", "."));
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) / 100 : null;
+}
+
+export function todayInputValue(): string {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+export function toDateInputValue(value: string | null | undefined): string {
+  if (!value) {
+    return "";
+  }
+  const offset = new Date(value).getTimezoneOffset() * 60_000;
+  return new Date(new Date(value).getTime() - offset).toISOString().slice(0, 10);
+}
+
+export function dateInputToIso(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return new Date(`${trimmed}T12:00:00`).toISOString();
+}
