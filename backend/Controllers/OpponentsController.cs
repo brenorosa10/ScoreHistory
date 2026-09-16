@@ -108,7 +108,18 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
             return NotFound(new { message = "Adversário não encontrado." });
         }
 
-        return Ok(ToResponse(opponent));
+        var userIdValue = userId.Value;
+        var played = await db.Matches.CountAsync(
+            match => match.OpponentId == opponent.Id && match.UserId == userIdValue,
+            cancellationToken);
+        var wins = await db.Matches.CountAsync(
+            match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == true,
+            cancellationToken);
+        var losses = await db.Matches.CountAsync(
+            match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == false,
+            cancellationToken);
+
+        return Ok(ToResponse(opponent, played, wins, losses));
     }
 
     [HttpPost]

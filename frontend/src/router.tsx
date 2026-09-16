@@ -17,6 +17,7 @@ import { LoginPage } from "@/pages/login-page";
 import { MatchDetailPage } from "@/pages/match-detail-page";
 import { NewMatchPage } from "@/pages/new-match-page";
 import { NewOpponentPage } from "@/pages/new-opponent-page";
+import { OpponentDetailPage } from "@/pages/opponent-detail-page";
 import { OpponentsPage } from "@/pages/opponents-page";
 import { ProfilePage } from "@/pages/profile-page";
 import { RegisterPage } from "@/pages/register-page";
@@ -120,6 +121,20 @@ const newOpponentRoute = createRoute({
   component: NewOpponentPage,
 });
 
+const opponentDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/adversarios/$opponentId",
+  validateSearch: (search: Record<string, unknown>): { page?: number } => {
+    const page = Number(search.page);
+    const next: { page?: number } = {};
+    if (Number.isFinite(page) && page > 0) {
+      next.page = Math.floor(page);
+    }
+    return next;
+  },
+  component: OpponentDetailPage,
+});
+
 const editOpponentRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/adversarios/$opponentId/editar",
@@ -177,6 +192,7 @@ const routeTree = rootRoute.addChildren([
     editRacketRoute,
     opponentsRoute,
     newOpponentRoute,
+    opponentDetailRoute,
     editOpponentRoute,
     newMatchRoute,
     matchDetailRoute,

@@ -47,3 +47,7 @@ export const WEAR_STRIPE_CLASS: Record<WearTone, string> = {
 export const BALL_WARN_DAYS = 14;
 export const OVERGRIP_WARN_DAYS = 21;
 export const STRING_WARN_DAYS = 45;
+
+export function latestOpenedBall<T extends { lastOpenedAt: string | null }>(balls: T[]): T | undefined {
+  return [...balls].sort((a, b) => (b.lastOpenedAt ?? "").localeCompare(a.lastOpenedAt ?? ""))[0];
+}

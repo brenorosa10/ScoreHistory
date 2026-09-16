@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ChevronRight, Lightbulb, Swords, Trophy } from "lucide-react";
+import { Lightbulb, Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DeleteMatchDialog } from "@/components/delete-match-dialog";
 import { EmptyState } from "@/components/empty-state";
-import { OpponentDetailsDialog } from "@/components/opponent-details-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { SwipeableMatchRow } from "@/components/swipeable-match-row";
@@ -12,11 +11,10 @@ import { WinRateRing } from "@/components/win-rate-ring";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingHint } from "@/components/ui/spinner";
-import type { HeadToHead, MatchRecord } from "@/lib/api";
+import type { MatchRecord } from "@/lib/api";
 import { DEFAULT_PAGE_SIZE } from "@/lib/api";
-import { formatMonth, toInitials } from "@/lib/format";
+import { formatMonth } from "@/lib/format";
 import {
-  dashboardHeadToHeadQueryOptions,
   dashboardSummaryQueryOptions,
   dashboardTipsQueryOptions,
   matchesQueryOptions,
@@ -38,7 +36,6 @@ export function HistoryPage() {
   const filtro: Filter = search.filtro ?? "all";
   const { data: summary, isPending: summaryPending } = useQuery(dashboardSummaryQueryOptions());
   const { data: tips = [], isPending: tipsPending } = useQuery(dashboardTipsQueryOptions());
-  const { data: headToHead = [], isPending: h2hPending } = useQuery(dashboardHeadToHeadQueryOptions());
   const { data: matchesPage, isPending: matchesPending, isFetching: matchesFetching } = useQuery(
     matchesQueryOptions({
       page,
@@ -51,7 +48,6 @@ export function HistoryPage() {
   const grouped = useMemo(() => groupByMonth(matches), [matches]);
   const isPending = summaryPending || matchesPending;
   const empty = (summary?.matches ?? 0) === 0;
-  const [selectedH2h, setSelectedH2h] = useState<HeadToHead | null>(null);
   const [revealedMatchId, setRevealedMatchId] = useState<string | null>(null);
   const [matchToDelete, setMatchToDelete] = useState<MatchRecord | null>(null);
 
@@ -75,7 +71,7 @@ export function HistoryPage() {
 
   return (
     <>
-      <PageHeader title="Histórico" description="Resultados, aproveitamento e duelos" back />
+      <PageHeader title="Histórico" description="Resultados e aproveitamento" back />
 
       <main className="grid gap-6 px-4 pt-4">
         {isPending && !summary ? (
@@ -136,64 +132,6 @@ export function HistoryPage() {
                 </div>
               </section>
             ) : null}
-
-            {h2hPending ? (
-              <section className="grid gap-3">
-                <Skeleton className="h-5 w-36" />
-                <Skeleton className="h-24 rounded-2xl" />
-                <Skeleton className="h-24 rounded-2xl" />
-              </section>
-            ) : headToHead.length > 0 ? (
-              <section className="grid gap-3">
-                <SectionTitle icon={Swords}>Head to head</SectionTitle>
-                <div className="grid gap-2">
-                  {headToHead.map((item) => {
-                    const share = item.played === 0 ? 0 : Math.round((item.wins / item.played) * 100);
-                    return (
-                      <button
-                        key={item.opponentId}
-                        type="button"
-                        onClick={() => setSelectedH2h(item)}
-                        className="rounded-2xl border bg-card p-4 text-left shadow-xs transition-colors outline-none active:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <Avatar name={item.name} />
-                            <div className="min-w-0">
-                              <p className="truncate font-medium">{item.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {item.played} {item.played === 1 ? "jogo" : "jogos"}
-                                {item.lastScore ? ` · último ${item.lastScore}` : ""}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1">
-                            <p className="text-sm font-semibold tabular-nums">
-                              <span className="text-success">{item.wins}</span>
-                              <span className="text-muted-foreground">-</span>
-                              <span className="text-destructive">{item.losses}</span>
-                            </p>
-                            <ChevronRight className="size-4 text-muted-foreground" />
-                          </div>
-                        </div>
-                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-destructive/20">
-                          <div
-                            className="h-full rounded-full bg-success transition-[width] duration-500"
-                            style={{ width: `${share}%` }}
-                          />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            ) : null}
-
-            <OpponentDetailsDialog
-              opponentId={selectedH2h?.opponentId ?? null}
-              h2h={selectedH2h ?? undefined}
-              onClose={() => setSelectedH2h(null)}
-            />
 
             <section className="grid gap-3">
               <div className="flex items-center justify-between gap-3">
@@ -280,22 +218,12 @@ function SectionTitle({ icon: Icon, children }: { icon?: typeof Trophy; children
   );
 }
 
-function Avatar({ name }: { name: string }) {
-  return (
-    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-      {toInitials(name)}
-    </span>
-  );
-}
-
 function LoadingState() {
   return (
     <div className="grid gap-4">
       <Skeleton className="h-36 rounded-2xl" />
       <Skeleton className="h-5 w-32" />
       <Skeleton className="h-14 rounded-xl" />
-      <Skeleton className="h-24 rounded-2xl" />
-      <Skeleton className="h-24 rounded-2xl" />
       <Skeleton className="h-16 rounded-2xl" />
       <Skeleton className="h-16 rounded-2xl" />
     </div>

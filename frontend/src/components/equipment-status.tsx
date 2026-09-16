@@ -8,6 +8,7 @@ import {
   OVERGRIP_WARN_DAYS,
   WEAR_STRIPE_CLASS,
   WEAR_TONE_CLASS,
+  latestOpenedBall,
   latestServiceAcross,
   wearTone,
 } from "@/lib/equipment";
@@ -33,7 +34,8 @@ export function EquipmentStatus() {
   }
 
   const overgrip = latestServiceAcross(rackets ?? [], ["Overgrip"]);
-  const ballsAt = finance?.lastBallCanOpenedAt ?? null;
+  const latestBall = latestOpenedBall(finance?.balls ?? []);
+  const ballsAt = latestBall?.lastOpenedAt ?? finance?.lastBallCanOpenedAt ?? null;
 
   return (
     <section className="grid gap-3">
@@ -51,7 +53,7 @@ export function EquipmentStatus() {
         <StatusTile
           icon={CircleDot}
           title="Bolinhas"
-          subtitle={finance?.ballName?.trim() || "Última lata"}
+          subtitle={latestBall?.name?.trim() || finance?.ballName?.trim() || "Última lata"}
           changedAt={ballsAt}
           emptyLabel="Nenhuma lata"
           warnAfter={BALL_WARN_DAYS}

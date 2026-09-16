@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Pencil, Plus, Search, Users } from "lucide-react";
+import { ChevronRight, Pencil, Plus, Search, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
@@ -124,7 +124,25 @@ export function OpponentsPage() {
               return (
                 <article
                   key={opponent.id}
-                  className="grid gap-3 rounded-2xl border bg-card p-4 shadow-xs"
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Ver confrontos contra ${opponent.name}`}
+                  className="grid cursor-pointer gap-3 rounded-2xl border bg-card p-4 shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  onClick={() =>
+                    void navigate({
+                      to: "/adversarios/$opponentId",
+                      params: { opponentId: opponent.id },
+                    })
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      void navigate({
+                        to: "/adversarios/$opponentId",
+                        params: { opponentId: opponent.id },
+                      });
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
@@ -148,11 +166,13 @@ export function OpponentsPage() {
                         <Link
                           to="/adversarios/$opponentId/editar"
                           params={{ opponentId: opponent.id }}
+                          onClick={(event) => event.stopPropagation()}
                         >
                           <Pencil />
                           Editar
                         </Link>
                       </Button>
+                      <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
                     </div>
                   </div>
 

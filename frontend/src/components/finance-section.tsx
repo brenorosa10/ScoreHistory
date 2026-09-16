@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
-import { Check, ChevronDown, CircleDot, Pencil, Wallet } from "lucide-react";
+import { Check, ChevronDown, Pencil, Wallet } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -13,149 +13,104 @@ import {
   financeToForm,
   formToFinancePayload,
   moneyFieldRule,
+  monthlyFinanceBreakdown,
+  monthlyFinanceHint,
+  isSameCalendarMonth,
   type FinanceFormValues,
 } from "@/lib/finance";
-import { formatMoney, formatRelativeDays, todayInputValue } from "@/lib/format";
-import { financeQueryOptions } from "@/lib/queries";
+import { formatMoney } from "@/lib/format";
+import { financeQueryOptions, racketsQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 type FinanceEditorProps = {
-  variant: "full" | "balls";
   finance: FinanceRecord;
   onDone?: () => void;
 };
 
-export function FinanceEditor({ variant, finance, onDone }: FinanceEditorProps) {
+export function FinanceEditor({ finance, onDone }: FinanceEditorProps) {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<FinanceFormValues>({
     defaultValues: emptyFinanceForm(),
     values: financeToForm(finance),
   });
   const mutation = useUpdateFinance();
-  const full = variant === "full";
 
   return (
     <form
       className="grid gap-4"
       onSubmit={handleSubmit((values) =>
-        mutation.mutate(formToFinancePayload(values, full), { onSuccess: onDone }),
+        mutation.mutate(formToFinancePayload(values), { onSuccess: onDone }),
       )}
     >
-      {full ? (
-        <fieldset className="grid gap-3">
-          <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Mensalidades
-          </legend>
-          <div className="grid grid-cols-2 gap-2">
-            <MoneyField
-              id="fin-lesson"
-              label="Aula"
-              error={errors.lessonPrice?.message}
-              register={register("lessonPrice", { validate: moneyFieldRule })}
-            />
-            <MoneyField
-              id="fin-club"
-              label="Clube"
-              error={errors.clubPrice?.message}
-              register={register("clubPrice", { validate: moneyFieldRule })}
-            />
-          </div>
-        </fieldset>
-      ) : null}
+      <fieldset className="grid gap-3">
+        <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Mensalidades
+        </legend>
+        <div className="grid grid-cols-2 gap-2">
+          <MoneyField
+            id="fin-lesson"
+            label="Aula"
+            error={errors.lessonPrice?.message}
+            register={register("lessonPrice", { validate: moneyFieldRule })}
+          />
+          <MoneyField
+            id="fin-club"
+            label="Clube"
+            error={errors.clubPrice?.message}
+            register={register("clubPrice", { validate: moneyFieldRule })}
+          />
+        </div>
+      </fieldset>
 
       <fieldset className="grid gap-3">
         <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Bolinhas
+          Consumíveis
         </legend>
-        <Field label="Modelo" htmlFor={`${variant}-ball-name`} hint="opcional">
-          <Input
-            id={`${variant}-ball-name`}
-            placeholder="Ex.: Wilson Extra Duty"
-            {...register("ballName")}
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Última lata" htmlFor={`${variant}-ball-opened`}>
-            <Input
-              id={`${variant}-ball-opened`}
-              type="date"
-              max={todayInputValue()}
-              {...register("lastBallCanOpenedAt")}
-            />
-          </Field>
+        <div className="grid grid-cols-3 gap-2">
           <MoneyField
-            id={`${variant}-ball-price`}
-            label="Valor da lata"
-            error={errors.ballCanPrice?.message}
-            register={register("ballCanPrice", { validate: moneyFieldRule })}
+            id="fin-string"
+            label="Corda"
+            error={errors.stringPrice?.message}
+            register={register("stringPrice", { validate: moneyFieldRule })}
+          />
+          <MoneyField
+            id="fin-overgrip"
+            label="Overgrip"
+            error={errors.overgripPrice?.message}
+            register={register("overgripPrice", { validate: moneyFieldRule })}
+          />
+          <MoneyField
+            id="fin-grip"
+            label="Grip"
+            error={errors.cushionGripPrice?.message}
+            register={register("cushionGripPrice", { validate: moneyFieldRule })}
           />
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="justify-self-start"
-          onClick={() => setValue("lastBallCanOpenedAt", todayInputValue(), { shouldDirty: true })}
-        >
-          <CircleDot />
-          Marcar lata aberta hoje
-        </Button>
       </fieldset>
 
-      {full ? (
-        <>
-          <fieldset className="grid gap-3">
-            <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Consumíveis
-            </legend>
-            <div className="grid grid-cols-3 gap-2">
-              <MoneyField
-                id="fin-string"
-                label="Corda"
-                error={errors.stringPrice?.message}
-                register={register("stringPrice", { validate: moneyFieldRule })}
-              />
-              <MoneyField
-                id="fin-overgrip"
-                label="Overgrip"
-                error={errors.overgripPrice?.message}
-                register={register("overgripPrice", { validate: moneyFieldRule })}
-              />
-              <MoneyField
-                id="fin-cushion"
-                label="Cushion"
-                error={errors.cushionGripPrice?.message}
-                register={register("cushionGripPrice", { validate: moneyFieldRule })}
-              />
-            </div>
-          </fieldset>
-
-          <fieldset className="grid gap-3">
-            <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Raquetes
-            </legend>
-            {finance.rackets.length === 0 ? (
-              <p className="rounded-xl border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
-                Cadastre uma raquete no equipamento para informar o valor.
-              </p>
-            ) : (
-              finance.rackets.map((racket) => (
-                <MoneyField
-                  key={racket.id}
-                  id={`fin-racket-${racket.id}`}
-                  label={racket.name}
-                  error={errors.racketPrices?.[racket.id]?.message}
-                  register={register(`racketPrices.${racket.id}`, { validate: moneyFieldRule })}
-                />
-              ))
-            )}
-          </fieldset>
-        </>
-      ) : null}
+      <fieldset className="grid gap-3">
+        <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Raquetes
+        </legend>
+        {finance.rackets.length === 0 ? (
+          <p className="rounded-xl border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
+            Cadastre uma raquete no equipamento para informar o valor.
+          </p>
+        ) : (
+          finance.rackets.map((racket) => (
+            <MoneyField
+              key={racket.id}
+              id={`fin-racket-${racket.id}`}
+              label={racket.name}
+              error={errors.racketPrices?.[racket.id]?.message}
+              register={register(`racketPrices.${racket.id}`, { validate: moneyFieldRule })}
+            />
+          ))
+        )}
+      </fieldset>
 
       <div className="grid gap-2 sm:grid-cols-2">
         <Button type="submit" loading={mutation.isPending}>
@@ -204,19 +159,21 @@ function MoneyField({
 
 export function FinanceSection() {
   const { data: finance, isPending, isError } = useQuery(financeQueryOptions());
+  const { data: rackets = [] } = useQuery(racketsQueryOptions());
   const [editing, setEditing] = useState(false);
 
   const racketsTotal = finance?.rackets.reduce((sum, r) => sum + (r.purchasePrice ?? 0), 0) ?? 0;
-  const monthly = (finance?.lessonPrice ?? 0) + (finance?.clubPrice ?? 0);
+  const month = finance ? monthlyFinanceBreakdown(finance, rackets) : null;
+  const balls = finance?.balls ?? [];
   const hasAnyValue =
     finance &&
     [
       finance.lessonPrice,
       finance.clubPrice,
-      finance.ballCanPrice,
       finance.stringPrice,
       finance.overgripPrice,
       finance.cushionGripPrice,
+      ...balls.map((ball) => ball.canPrice),
       ...finance.rackets.map((r) => r.purchasePrice),
     ].some((v) => v != null);
 
@@ -246,7 +203,7 @@ export function FinanceSection() {
           Não foi possível carregar o financeiro.
         </p>
       ) : editing ? (
-        <FinanceEditor variant="full" finance={finance} onDone={() => setEditing(false)} />
+        <FinanceEditor finance={finance} onDone={() => setEditing(false)} />
       ) : !hasAnyValue ? (
         <div className="grid justify-items-center gap-3 rounded-xl border border-dashed px-4 py-7 text-center">
           <Wallet className="size-6 text-muted-foreground" />
@@ -263,21 +220,40 @@ export function FinanceSection() {
       ) : (
         <div className="grid gap-3">
           <div className="grid grid-cols-2 gap-2">
-            <Highlight label="Por mês" value={formatMoney(monthly)} hint="aula + clube" />
+            <Highlight
+              label="Neste mês"
+              value={formatMoney(month?.total ?? 0)}
+              hint={month ? monthlyFinanceHint(month) : undefined}
+            />
             <Highlight label="Em raquetes" value={formatMoney(racketsTotal)} hint={`${finance.rackets.length} cadastrada${finance.rackets.length === 1 ? "" : "s"}`} />
           </div>
 
           <dl className="divide-y rounded-xl border">
             <Row label="Aula" value={finance.lessonPrice} />
             <Row label="Clube" value={finance.clubPrice} />
+            {balls.map((ball, index) => (
+              <Row
+                key={ball.id}
+                label={ball.name?.trim() || (balls.length > 1 ? `Lata ${index + 1}` : "Lata de bolinhas")}
+                value={ball.canPrice}
+                hint={isSameCalendarMonth(ball.lastOpenedAt) ? "aberta neste mês" : undefined}
+              />
+            ))}
             <Row
-              label="Lata de bolinhas"
-              value={finance.ballCanPrice}
-              hint={finance.lastBallCanOpenedAt ? `aberta ${formatRelativeDays(finance.lastBallCanOpenedAt)}` : undefined}
+              label="Corda"
+              value={finance.stringPrice}
+              hint={swapHint(month?.stringCount ?? 0, "troca", "trocas")}
             />
-            <Row label="Corda" value={finance.stringPrice} />
-            <Row label="Overgrip" value={finance.overgripPrice} />
-            <Row label="Cushion grip" value={finance.cushionGripPrice} />
+            <Row
+              label="Overgrip"
+              value={finance.overgripPrice}
+              hint={swapHint(month?.overgripCount ?? 0, "troca", "trocas")}
+            />
+            <Row
+              label="Grip"
+              value={finance.cushionGripPrice}
+              hint={swapHint(month?.gripCount ?? 0, "troca", "trocas")}
+            />
           </dl>
 
           {finance.rackets.length > 0 ? (
@@ -311,6 +287,13 @@ function RacketPrices({ rackets }: { rackets: FinanceRecord["rackets"] }) {
       ) : null}
     </div>
   );
+}
+
+function swapHint(count: number, singular: string, plural: string) {
+  if (count <= 0) {
+    return undefined;
+  }
+  return count === 1 ? `1 ${singular} neste mês` : `${count} ${plural} neste mês`;
 }
 
 function Highlight({ label, value, hint }: { label: string; value: string; hint?: string }) {

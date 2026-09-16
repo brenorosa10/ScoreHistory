@@ -11,6 +11,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Racket> Rackets => Set<Racket>();
     public DbSet<RacketService> RacketServices => Set<RacketService>();
     public DbSet<UserFinance> UserFinances => Set<UserFinance>();
+    public DbSet<BallCan> BallCans => Set<BallCan>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -90,6 +91,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasOne<User>()
                 .WithOne()
                 .HasForeignKey<UserFinance>(finance => finance.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BallCan>(entity =>
+        {
+            entity.ToTable("ball_cans");
+            entity.HasKey(ball => ball.Id);
+            entity.HasIndex(ball => ball.UserId);
+            entity.Property(ball => ball.Name).HasMaxLength(256);
+            entity.Property(ball => ball.CanPrice).HasPrecision(10, 2);
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(ball => ball.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

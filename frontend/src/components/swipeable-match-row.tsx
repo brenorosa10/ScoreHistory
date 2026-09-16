@@ -13,6 +13,7 @@ const COMMIT_THRESHOLD = 112;
 type SwipeableMatchRowProps = {
   match: MatchRecord;
   revealed: boolean;
+  hideOpponentName?: boolean;
   onRevealedChange: (revealed: boolean) => void;
   onRequestDelete: () => void;
 };
@@ -20,6 +21,7 @@ type SwipeableMatchRowProps = {
 export function SwipeableMatchRow({
   match,
   revealed,
+  hideOpponentName = false,
   onRevealedChange,
   onRequestDelete,
 }: SwipeableMatchRowProps) {
@@ -161,9 +163,11 @@ export function SwipeableMatchRow({
             {resultLetter(match.won)}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium">{match.opponentName}</p>
+            <p className="truncate font-medium">
+              {hideOpponentName ? formatShortDate(match.playedAt) : match.opponentName}
+            </p>
             <p className="truncate text-xs text-muted-foreground">
-              {formatShortDate(match.playedAt)} · {match.courtType}
+              {hideOpponentName ? match.courtType : `${formatShortDate(match.playedAt)} · ${match.courtType}`}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">

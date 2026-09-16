@@ -53,6 +53,7 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = PageQuery.DefaultPageSize,
         [FromQuery] string? filter = null,
+        [FromQuery] Guid? opponentId = null,
         CancellationToken cancellationToken = default)
     {
         var userId = CurrentUser.GetId(User);
@@ -65,6 +66,11 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
         var query = db.Matches
             .Include(match => match.Opponent)
             .Where(match => match.UserId == userId);
+
+        if (opponentId is not null)
+        {
+            query = query.Where(match => match.OpponentId == opponentId);
+        }
 
         if (string.Equals(filter, "wins", StringComparison.OrdinalIgnoreCase))
         {

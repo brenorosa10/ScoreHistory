@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { deleteMatch, type MatchRecord } from "@/lib/api";
-import { dashboardQueryKey, matchesQueryKey } from "@/lib/queries";
+import { dashboardQueryKey, matchesQueryKey, opponentsQueryKey } from "@/lib/queries";
 
 type DeleteMatchDialogProps = {
   match: MatchRecord | null;
@@ -18,6 +18,7 @@ export function DeleteMatchDialog({ match, open, onClose, onDeleted }: DeleteMat
     mutationFn: (id: string) => deleteMatch(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: matchesQueryKey });
+      await queryClient.invalidateQueries({ queryKey: opponentsQueryKey });
       await queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
       onClose();
       await onDeleted?.();

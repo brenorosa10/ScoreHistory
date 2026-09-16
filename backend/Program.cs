@@ -215,6 +215,26 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
             ALTER TABLE opponents ADD COLUMN IF NOT EXISTS "Class" character varying(32);
             ALTER TABLE matches ALTER COLUMN "Won" DROP NOT NULL;
             ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "PurchasePrice" numeric(10,2);
+
+            CREATE TABLE IF NOT EXISTS ball_cans (
+                "Id" uuid NOT NULL,
+                "UserId" uuid NOT NULL,
+                "Name" character varying(256),
+                "CanPrice" numeric(10,2),
+                "LastOpenedAt" timestamp with time zone,
+                "SortOrder" integer NOT NULL DEFAULT 0,
+                CONSTRAINT "PK_ball_cans" PRIMARY KEY ("Id"),
+                CONSTRAINT "FK_ball_cans_users_UserId" FOREIGN KEY ("UserId") REFERENCES users ("Id") ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS "IX_ball_cans_UserId" ON ball_cans ("UserId");
+
+            INSERT INTO ball_cans ("Id", "UserId", "Name", "CanPrice", "LastOpenedAt", "SortOrder")
+            SELECT gen_random_uuid(), finance."UserId", finance."BallName", finance."BallCanPrice", finance."LastBallCanOpenedAt", 0
+            FROM user_finance finance
+            WHERE (finance."BallName" IS NOT NULL OR finance."BallCanPrice" IS NOT NULL OR finance."LastBallCanOpenedAt" IS NOT NULL)
+              AND NOT EXISTS (
+                  SELECT 1 FROM ball_cans existing WHERE existing."UserId" = finance."UserId"
+              );
             """);
         await scope.ServiceProvider.GetRequiredService<UserStore>().EnsureDemoUserAsync();
     }

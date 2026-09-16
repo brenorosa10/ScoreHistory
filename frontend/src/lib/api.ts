@@ -155,6 +155,7 @@ export type ListMatchesParams = {
   page?: number;
   pageSize?: number;
   filter?: MatchFilter;
+  opponentId?: string;
 };
 
 export type DashboardSummary = {
@@ -298,6 +299,7 @@ export async function listMatches(params: ListMatchesParams = {}): Promise<Paged
       page: params.page ?? 1,
       pageSize: params.pageSize ?? DEFAULT_PAGE_SIZE,
       filter: params.filter && params.filter !== "all" ? params.filter : undefined,
+      opponentId: params.opponentId,
     })}`,
     { headers: authHeaders() },
   );
@@ -394,6 +396,13 @@ export type FinanceRacketPrice = {
   purchasePrice: number | null;
 };
 
+export type FinanceBall = {
+  id: string;
+  name: string | null;
+  canPrice: number | null;
+  lastOpenedAt: string | null;
+};
+
 export type FinanceRecord = {
   lessonPrice: number | null;
   clubPrice: number | null;
@@ -403,6 +412,7 @@ export type FinanceRecord = {
   cushionGripPrice: number | null;
   ballName: string | null;
   lastBallCanOpenedAt: string | null;
+  balls: FinanceBall[];
   rackets: FinanceRacketPrice[];
 };
 
@@ -415,12 +425,14 @@ export type FinancePayload = {
   cushionGripPrice?: number | null;
   ballName?: string | null;
   lastBallCanOpenedAt?: string | null;
+  balls?: { id?: string; name?: string | null; canPrice?: number | null; lastOpenedAt?: string | null }[];
   rackets?: { id: string; purchasePrice?: number | null }[];
 };
 
 export async function getFinance(): Promise<FinanceRecord> {
   const response = await fetch(`${API_URL}/api/finance`, { headers: authHeaders() });
-  return parseJson(response, "Não foi possível carregar o financeiro.");
+  const finance = await parseJson<FinanceRecord>(response, "Não foi possível carregar o financeiro.");
+  return { ...finance, balls: finance.balls ?? [], rackets: finance.rackets ?? [] };
 }
 
 export async function updateFinance(payload: FinancePayload): Promise<FinanceRecord> {
@@ -429,5 +441,6 @@ export async function updateFinance(payload: FinancePayload): Promise<FinanceRec
     headers: authHeaders(),
     body: JSON.stringify(payload),
   });
-  return parseJson(response, "Não foi possível salvar o financeiro.");
+  const finance = await parseJson<FinanceRecord>(response, "Não foi possível salvar o financeiro.");
+  return { ...finance, balls: finance.balls ?? [], rackets: finance.rackets ?? [] };
 }
