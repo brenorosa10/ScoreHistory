@@ -5,6 +5,7 @@ using ScoreHistory.Api.Auth;
 using ScoreHistory.Api.Data;
 using ScoreHistory.Api.Models;
 using ScoreHistory.Api.Paging;
+using ScoreHistory.Api.Services;
 
 namespace ScoreHistory.Api.Controllers;
 
@@ -130,9 +131,10 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
             return Unauthorized();
         }
 
-        if (string.IsNullOrWhiteSpace(request.Score))
+        var scoreError = ScoreRules.Validate(request.Score, request.Won);
+        if (scoreError is not null)
         {
-            return BadRequest(new { message = "Informe o placar." });
+            return BadRequest(new { message = scoreError });
         }
 
         if (!CourtTypes.Contains(request.CourtType))
@@ -189,9 +191,10 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
             return NotFound(new { message = "Partida não encontrada." });
         }
 
-        if (string.IsNullOrWhiteSpace(request.Score))
+        var scoreError = ScoreRules.Validate(request.Score, request.Won);
+        if (scoreError is not null)
         {
-            return BadRequest(new { message = "Informe o placar." });
+            return BadRequest(new { message = scoreError });
         }
 
         if (!CourtTypes.Contains(request.CourtType))

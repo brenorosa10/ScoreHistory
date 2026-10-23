@@ -10,13 +10,15 @@ import {
   TIEBREAK_POINT_OPTIONS,
   type ScoreEntry,
 } from "@/lib/score";
+import { cn } from "@/lib/utils";
 
 type ScoreBuilderProps = {
   value: ScoreEntry[];
   onChange: (entries: ScoreEntry[]) => void;
+  invalid?: boolean;
 };
 
-export function ScoreBuilder({ value, onChange }: ScoreBuilderProps) {
+export function ScoreBuilder({ value, onChange, invalid }: ScoreBuilderProps) {
   function update(index: number, patch: Partial<ScoreEntry>) {
     onChange(
       value.map((entry, position) => {
@@ -41,7 +43,11 @@ export function ScoreBuilder({ value, onChange }: ScoreBuilderProps) {
   let setNumber = 0;
 
   return (
-    <div id="sets" className="grid gap-2">
+    <div
+      id="sets"
+      aria-invalid={invalid || undefined}
+      className={cn("grid gap-2 rounded-xl", invalid && "ring-2 ring-destructive/40")}
+    >
       <div className="grid gap-2">
         {value.map((entry, index) => {
           const isTiebreak = entry.kind === "tiebreak";

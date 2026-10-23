@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { clearToken } from "@/lib/api";
 import { toInitials } from "@/lib/format";
+import { drawCount, WIN_RATE_HINT, winRatePercent } from "@/lib/record";
 import {
   dashboardSummaryQueryOptions,
   meQueryKey,
@@ -26,7 +27,8 @@ export function ProfilePage() {
   const displayName = user?.name || user?.email || "Jogador";
   const wins = summary?.wins ?? 0;
   const losses = summary?.losses ?? 0;
-  const winRate = summary?.winRate ?? 0;
+  const draws = drawCount(summary?.matches ?? 0, wins, losses, summary?.draws);
+  const winRate = winRatePercent(wins, losses);
 
   async function signOut() {
     clearToken();
@@ -71,8 +73,16 @@ export function ProfilePage() {
 
               <div className="grid grid-cols-3 gap-2">
                 <Stat label="Partidas" value={String(summary?.matches ?? 0)} />
-                <Stat label="Vitórias" value={String(wins)} sub={`${losses} derrota${losses === 1 ? "" : "s"}`} />
-                <Stat label="Aproveitamento" value={`${winRate}%`} />
+                <Stat
+                  label="Vitórias"
+                  value={String(wins)}
+                  sub={
+                    draws > 0
+                      ? `${draws} ${draws === 1 ? "empate" : "empates"} · ${losses} ${losses === 1 ? "derrota" : "derrotas"}`
+                      : `${losses} ${losses === 1 ? "derrota" : "derrotas"}`
+                  }
+                />
+                <Stat label="Aproveitamento" value={`${winRate}%`} sub={WIN_RATE_HINT} />
               </div>
             </div>
           </section>
@@ -101,7 +111,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
     <div className="grid gap-0.5 rounded-xl bg-muted/60 px-2 py-2.5 text-center">
       <p className="text-xl font-bold tabular-nums leading-none">{value}</p>
       <p className="text-[0.65rem] text-muted-foreground">{label}</p>
-      {sub ? <p className="text-[0.6rem] text-muted-foreground/80">{sub}</p> : null}
+      {sub ? <p className="text-[0.6rem] text-balance text-muted-foreground/80">{sub}</p> : null}
     </div>
   );
 }

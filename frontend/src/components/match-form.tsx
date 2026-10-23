@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { OpponentPicker } from "@/components/opponent-picker";
 import { ScoreBuilder } from "@/components/score-builder";
@@ -10,12 +10,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { useScrollToFieldError } from "@/hooks/use-scroll-to-field-error";
 import type { MatchPayload } from "@/lib/api";
 import { COURT_TYPE_OPTIONS } from "@/lib/constants";
-import { emptySet, formatScore, hasPlayedScore, hasResult, resolveWinner, type ScoreEntry } from "@/lib/score";
+import { dateInputError, formatInputDate, todayInputValue } from "@/lib/format";
+import {
+  emptySet,
+  formatScore,
+  isValidScore,
+  resultMismatchMessage,
+  scoreFieldError,
+  type MatchResultChoice,
+  type ScoreEntry,
+} from "@/lib/score";
 
 export type MatchFormValues = {
   opponentId: string;
   sets: ScoreEntry[];
-  won: "true" | "false" | "draw";
+  won: MatchResultChoice;
   courtType: string;
   playedAt: string;
   notes: string;
@@ -36,10 +45,19 @@ type MatchFormProps = {
 
 const courtOptions = COURT_TYPE_OPTIONS.map((option) => ({ value: option, label: option }));
 
-function today() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset() * 60_000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+function formErrorMessage(error: unknown): string | undefined {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  const record = error as { message?: unknown; root?: { message?: unknown } };
+  if (typeof record.message === "string" && record.message) {
+    return record.message;
+  }
+  if (typeof record.root?.message === "string" && record.root.message) {
+    return record.root.message;
+  }
+  return undefined;
 }
 
 export function MatchForm({
@@ -56,6 +74,9 @@ export function MatchForm({
     control,
     handleSubmit,
     watch,
+    getValues,
+    setError,
+    trigger,
     formState: { errors, submitCount },
   } = useForm<MatchFormValues>({
     defaultValues: {
@@ -63,7 +84,7 @@ export function MatchForm({
       sets: [emptySet()],
       won: "true",
       courtType: "Saibro",
-      playedAt: today(),
+      playedAt: todayInputValue(),
       notes: "",
       strengths: "",
       weaknesses: "",
@@ -75,21 +96,32 @@ export function MatchForm({
 
   const sets = watch("sets");
   const won = watch("won");
-  const scoreWinner = resolveWinner(sets);
-  const scoreMismatch =
-    won === "draw"
-      ? scoreWinner !== null
-      : scoreWinner !== null && (scoreWinner === "home") !== (won === "true");
-  const mismatchLabel =
-    won === "draw" ? "empate" : won === "true" ? "vitória" : "derrota";
+  const playedAt = watch("playedAt");
+  const scoreError = formErrorMessage(errors.sets);
+  const mismatch = isValidScore(sets) ? resultMismatchMessage(sets, won) : null;
+  const playedAtLabel = formatInputDate(playedAt);
   useScrollToFieldError(formRef, submitCount);
+
+  useEffect(() => {
+    if (submitCount > 0) {
+      void trigger("sets");
+    }
+  }, [submitCount, trigger, won]);
 
   return (
     <form
       ref={formRef}
+      noValidate
       className="grid gap-4 px-4 pt-4"
-      onSubmit={handleSubmit((values) =>
-        onSubmit({
+      onSubmit={handleSubmit(
+        (values) => {
+          const message = scoreFieldError(values.sets, values.won);
+          if (message) {
+            setError("sets", { type: "validate", message });
+            return;
+          }
+
+          onSubmit({
           opponentId: values.opponentId,
           score: formatScore(values.sets),
           won: values.won === "draw" ? null : values.won === "true",
@@ -100,7 +132,14 @@ export function MatchForm({
           weaknesses: values.weaknesses,
           opponentStrengths: values.opponentStrengths,
           opponentWeaknesses: values.opponentWeaknesses,
-        }),
+        });
+        },
+        () => {
+          const message = scoreFieldError(getValues("sets"), getValues("won"));
+          if (message) {
+            setError("sets", { type: "validate", message });
+          }
+        },
       )}
     >
       <section className="grid gap-4 rounded-2xl border bg-card p-4 shadow-xs">
@@ -110,30 +149,19 @@ export function MatchForm({
           render={({ field }) => <ResultToggle value={field.value} onChange={field.onChange} />}
         />
 
-        <Field label="Placar" htmlFor="sets" error={errors.sets?.root?.message}>
+        <Field label="Placar" htmlFor="sets" error={scoreError}>
           <Controller
             control={control}
             name="sets"
             rules={{
-              validate: (value) => {
-                if (won === "draw") {
-                  return hasPlayedScore(value) || "Informe o placar da partida.";
-                }
-                if (hasResult(value)) {
-                  return true;
-                }
-                return hasPlayedScore(value)
-                  ? "O placar está empatado. Marque empate ou ajuste os games."
-                  : "Informe os games de pelo menos um set.";
-              },
+              validate: (value) => scoreFieldError(value, getValues("won")) ?? true,
             }}
-            render={({ field }) => <ScoreBuilder value={field.value} onChange={field.onChange} />}
+            render={({ field }) => (
+              <ScoreBuilder value={field.value} onChange={field.onChange} invalid={Boolean(scoreError)} />
+            )}
           />
-          {scoreMismatch ? (
-            <p className="rounded-xl bg-warning/10 px-3 py-2 text-sm text-foreground">
-              O placar aponta {scoreWinner === "home" ? "vitória" : "derrota"}, mas você marcou{" "}
-              {mismatchLabel}.
-            </p>
+          {mismatch && !scoreError ? (
+            <p className="rounded-xl bg-warning/10 px-3 py-2 text-sm text-foreground">{mismatch}</p>
           ) : null}
         </Field>
 
@@ -152,8 +180,17 @@ export function MatchForm({
           />
         </Field>
 
-        <Field label="Data" htmlFor="playedAt">
-          <Input id="playedAt" type="date" max={today()} {...register("playedAt")} />
+        <Field label="Data" htmlFor="playedAt" hint={playedAtLabel ?? undefined} error={errors.playedAt?.message}>
+          <Input
+            id="playedAt"
+            type="date"
+            lang="pt-BR"
+            max={todayInputValue()}
+            aria-invalid={errors.playedAt ? true : undefined}
+            {...register("playedAt", {
+              validate: (value) => dateInputError(value, { max: todayInputValue() }),
+            })}
+          />
         </Field>
 
         <Field label="Tipo de quadra" htmlFor="courtType">

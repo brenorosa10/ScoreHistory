@@ -23,7 +23,7 @@ export function useScrollToFieldError(
         return;
       }
 
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.scrollIntoView?.({ behavior: "smooth", block: "center" });
       form.querySelector<HTMLElement>("[aria-invalid='true']")?.focus({ preventScroll: true });
     });
 

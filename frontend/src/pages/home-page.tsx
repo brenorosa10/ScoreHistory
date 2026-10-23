@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatShortDate } from "@/lib/format";
 import { resultBadgeClass, resultLabel, resultLetter, resultStripeClass } from "@/lib/match-result";
+import { drawCount, recordSummary, WIN_RATE_HINT, winRatePercent } from "@/lib/record";
 import { dashboardSummaryQueryOptions, meQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +19,8 @@ export function HomePage() {
   const matches = summary?.matches ?? 0;
   const wins = summary?.wins ?? 0;
   const losses = summary?.losses ?? 0;
-  const winRate = summary?.winRate ?? 0;
+  const draws = drawCount(matches, wins, losses, summary?.draws);
+  const winRate = winRatePercent(wins, losses);
   const streak = summary?.streakCount ?? 0;
 
   return (
@@ -53,10 +55,9 @@ export function HomePage() {
                   <p className="text-xs font-medium uppercase tracking-wide opacity-80">Aproveitamento</p>
                   <p className="mt-1 text-4xl font-bold tabular-nums leading-none">{winRate}%</p>
                   <p className="mt-2 text-xs opacity-80">
-                    {matches === 0
-                      ? "Registre a primeira partida"
-                      : `${wins} vitória${wins === 1 ? "" : "s"} · ${losses} derrota${losses === 1 ? "" : "s"}`}
+                    {matches === 0 ? "Registre a primeira partida" : recordSummary(wins, draws, losses)}
                   </p>
+                  {matches > 0 ? <p className="mt-1 text-[0.65rem] opacity-70">{WIN_RATE_HINT}</p> : null}
                 </div>
                 {streak > 0 ? (
                   <span className="flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold backdrop-blur">
@@ -144,6 +145,7 @@ export function HomePage() {
 
             <Link
               to="/adversarios"
+              aria-label="Adversários cadastrados"
               className="flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-xs transition-colors active:bg-accent"
             >
               <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
@@ -255,6 +257,7 @@ function QuickAction({
   return (
     <Link
       to={to}
+      aria-label={label}
       className={cn(
         "flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border p-2 text-center text-xs font-medium shadow-xs transition-transform active:scale-[0.97]",
         primary ? "border-primary bg-primary text-primary-foreground" : "bg-card text-foreground",
@@ -266,7 +269,7 @@ function QuickAction({
           primary ? "bg-white/15" : "bg-accent text-accent-foreground",
         )}
       >
-        <Icon className="size-5" />
+        <Icon className="size-5" aria-hidden />
       </span>
       {label}
     </Link>

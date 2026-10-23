@@ -2,9 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { RacketForm, type RacketFormValues } from "@/components/racket-form";
+import { ResourceMissing } from "@/components/resource-missing";
 import { DEFAULT_FRAME_COLOR, DEFAULT_GRIP_COLOR, DEFAULT_STRING_COLOR } from "@/components/racket-preview";
 import { Skeleton } from "@/components/ui/skeleton";
-import { updateRacket, type RacketPayload, type RacketRecord } from "@/lib/api";
+import { isNotFoundError, updateRacket, type RacketPayload, type RacketRecord } from "@/lib/api";
 import { moneyToInput } from "@/lib/format";
 import { financeQueryKey, racketQueryOptions, racketsQueryKey } from "@/lib/queries";
 
@@ -12,7 +13,7 @@ export function EditRacketPage() {
   const { racketId } = useParams({ from: "/app/perfil/raquetes/$racketId/editar" });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: racket, isPending, isError } = useQuery(racketQueryOptions(racketId));
+  const { data: racket, isPending, isError, error } = useQuery(racketQueryOptions(racketId));
 
   const mutation = useMutation({
     mutationFn: (payload: RacketPayload) => updateRacket(racketId, payload),
@@ -37,10 +38,18 @@ export function EditRacketPage() {
   }
 
   if (isError || !racket) {
+    const missing = isNotFoundError(error);
     return (
       <>
         <PageHeader title="Editar raquete" back />
-        <p className="px-4 pt-6 text-center text-sm text-destructive">Não foi possível carregar a raquete.</p>
+        <ResourceMissing
+          title={missing ? "Raquete não encontrada" : "Não foi possível carregar a raquete"}
+          description={
+            missing ? "Essa raquete não existe ou foi removida." : "Tente novamente em instantes."
+          }
+          actionTo="/perfil"
+          actionLabel="Voltar ao perfil"
+        />
       </>
     );
   }

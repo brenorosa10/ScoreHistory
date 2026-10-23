@@ -13,6 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DEFAULT_PAGE_SIZE } from "@/lib/api";
 import { opponentMeta, toInitials } from "@/lib/format";
+import { drawCount, h2hScore } from "@/lib/record";
 import { opponentsQueryOptions } from "@/lib/queries";
 
 export function OpponentsPage() {
@@ -119,7 +120,8 @@ export function OpponentsPage() {
             {opponents.map((opponent) => {
               const played = opponent.played ?? 0;
               const wins = opponent.wins ?? 0;
-              const losses = opponent.losses ?? Math.max(0, played - wins);
+              const losses = opponent.losses ?? 0;
+              const draws = drawCount(played, wins, losses, opponent.draws);
 
               return (
                 <article
@@ -127,7 +129,7 @@ export function OpponentsPage() {
                   role="link"
                   tabIndex={0}
                   aria-label={`Ver confrontos contra ${opponent.name}`}
-                  className="grid cursor-pointer gap-3 rounded-2xl border bg-card p-4 shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="grid min-w-0 cursor-pointer gap-3 overflow-hidden rounded-2xl border bg-card p-4 shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   onClick={() =>
                     void navigate({
                       to: "/adversarios/$opponentId",
@@ -144,7 +146,7 @@ export function OpponentsPage() {
                     }
                   }}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-3">
                     <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
                       {toInitials(opponent.name)}
                     </span>
@@ -156,8 +158,12 @@ export function OpponentsPage() {
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {played > 0 ? (
-                        <Badge variant="outline">
-                          H2H {wins}-{losses}
+                        <Badge
+                          variant="outline"
+                          className="whitespace-normal"
+                          aria-label={h2hScore(wins, losses, draws)}
+                        >
+                          H2H {h2hScore(wins, losses, draws)}
                         </Badge>
                       ) : (
                         <Badge variant="outline">Sem jogos</Badge>
@@ -181,20 +187,22 @@ export function OpponentsPage() {
                       {opponent.strengths ? (
                         <p>
                           <span className="font-medium text-success">Forte: </span>
-                          <span className="text-muted-foreground">{opponent.strengths}</span>
+                          <span className="break-words text-muted-foreground [overflow-wrap:anywhere]">{opponent.strengths}</span>
                         </p>
                       ) : null}
                       {opponent.weaknesses ? (
                         <p>
                           <span className="font-medium text-destructive">Fraco: </span>
-                          <span className="text-muted-foreground">{opponent.weaknesses}</span>
+                          <span className="break-words text-muted-foreground [overflow-wrap:anywhere]">{opponent.weaknesses}</span>
                         </p>
                       ) : null}
                     </div>
                   ) : null}
 
                   {opponent.notes ? (
-                    <p className="text-sm text-muted-foreground">{opponent.notes}</p>
+                    <p className="line-clamp-3 text-sm break-words text-muted-foreground [overflow-wrap:anywhere]">
+                      {opponent.notes}
+                    </p>
                   ) : null}
                 </article>
               );

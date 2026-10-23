@@ -74,6 +74,7 @@ function NavTab({
   return (
     <Link
       to={to}
+      aria-label={label}
       aria-current={active ? "page" : undefined}
       className={cn(
         "mx-auto flex h-full w-full flex-col items-center justify-center gap-1 rounded-xl text-[0.65rem] font-medium transition-colors",
@@ -86,7 +87,7 @@ function NavTab({
           active && "bg-primary/12",
         )}
       >
-        <Icon className="size-5" />
+        <Icon className="size-5" aria-hidden />
       </span>
       {label}
     </Link>

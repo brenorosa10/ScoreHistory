@@ -20,7 +20,9 @@ import {
 } from "@/lib/equipment";
 import { ballsToPayload, financeToPayload, moneyFieldRule } from "@/lib/finance";
 import {
+  dateInputError,
   dateInputToIso,
+  formatInputDate,
   formatMoney,
   formatRelativeDays,
   moneyToInput,
@@ -229,6 +231,7 @@ function BallEditor({
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<BallFormValues>({
     defaultValues: {
@@ -272,7 +275,7 @@ function BallEditor({
   }
 
   return (
-    <form className="grid gap-3 rounded-xl border bg-muted/40 p-3" onSubmit={handleSubmit(save)}>
+    <form noValidate className="grid gap-3 rounded-xl border bg-muted/40 p-3" onSubmit={handleSubmit(save)}>
       <Field label="Modelo" htmlFor={`ball-name-${ball?.id ?? "new"}`} hint="opcional">
         <Input
           id={`ball-name-${ball?.id ?? "new"}`}
@@ -281,12 +284,21 @@ function BallEditor({
         />
       </Field>
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Última lata" htmlFor={`ball-opened-${ball?.id ?? "new"}`}>
+        <Field
+          label="Última lata"
+          htmlFor={`ball-opened-${ball?.id ?? "new"}`}
+          hint={formatInputDate(watch("lastOpenedAt")) ?? undefined}
+          error={errors.lastOpenedAt?.message}
+        >
           <Input
             id={`ball-opened-${ball?.id ?? "new"}`}
             type="date"
+            lang="pt-BR"
             max={todayInputValue()}
-            {...register("lastOpenedAt")}
+            aria-invalid={errors.lastOpenedAt ? true : undefined}
+            {...register("lastOpenedAt", {
+              validate: (value) => dateInputError(value, { required: false, max: todayInputValue() }),
+            })}
           />
         </Field>
         <Field label="Valor da lata" htmlFor={`ball-price-${ball?.id ?? "new"}`} hint="R$" error={errors.canPrice?.message}>

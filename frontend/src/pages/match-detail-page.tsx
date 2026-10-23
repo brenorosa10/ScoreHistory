@@ -4,20 +4,23 @@ import { ChevronRight, Lightbulb, Pencil } from "lucide-react";
 import { useState } from "react";
 import { OpponentDetailsDialog } from "@/components/opponent-details-dialog";
 import { PageHeader } from "@/components/page-header";
+import { ResourceMissing } from "@/components/resource-missing";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isNotFoundError } from "@/lib/api";
 import { formatFullDate, opponentMeta } from "@/lib/format";
 import { resultBannerClass, resultLabel } from "@/lib/match-result";
+import { drawCount } from "@/lib/record";
 import { dashboardHeadToHeadByOpponentQueryOptions, matchQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export function MatchDetailPage() {
   const { matchId } = useParams({ from: "/app/partidas/$matchId" });
-  const { data: match, isPending } = useQuery(matchQueryOptions(matchId));
+  const { data: match, isPending, isError, error } = useQuery(matchQueryOptions(matchId));
   const { data: h2h, isPending: h2hPending } = useQuery(dashboardHeadToHeadByOpponentQueryOptions(match?.opponentId ?? ""));
   const [opponentOpen, setOpponentOpen] = useState(false);
 
-  if (isPending || !match) {
+  if (isPending) {
     return (
       <>
         <PageHeader title="Partida" back />
@@ -31,10 +34,31 @@ export function MatchDetailPage() {
     );
   }
 
+  if (isError || !match) {
+    const missing = isNotFoundError(error);
+    return (
+      <>
+        <PageHeader title="Partida" back />
+        <ResourceMissing
+          title={missing ? "Partida não encontrada" : "Não foi possível carregar a partida"}
+          description={
+            missing
+              ? "Essa partida não existe ou foi excluída."
+              : "Tente novamente em instantes."
+          }
+          actionTo="/historico"
+          actionLabel="Voltar ao histórico"
+        />
+      </>
+    );
+  }
+
   const wins = h2h?.wins ?? 0;
   const losses = h2h?.losses ?? 0;
   const played = h2h?.played ?? 0;
-  const share = played === 0 ? 0 : Math.round((wins / played) * 100);
+  const draws = drawCount(played, wins, losses, h2h?.draws);
+  const decided = wins + losses;
+  const share = decided === 0 ? 0 : Math.round((wins / decided) * 100);
 
   const tips = [
     match.weaknesses ? `Trabalhe isto no treino: ${match.weaknesses}` : null,
@@ -102,10 +126,11 @@ export function MatchDetailPage() {
                   <h2 className="font-semibold">Head to head</h2>
                   <p className="text-xs text-muted-foreground">
                     {played} {played === 1 ? "jogo" : "jogos"} contra {match.opponentName}
+                    {draws > 0 ? ` · ${draws === 1 ? "1 empate" : `${draws} empates`}` : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <p className="text-lg font-bold tabular-nums">
+                  <p className="text-lg font-bold tabular-nums" aria-label={`${wins} vitórias, ${losses} derrotas${draws > 0 ? `, ${draws} empates` : ""}`}>
                     <span className="text-success">{wins}</span>
                     <span className="text-muted-foreground">-</span>
                     <span className="text-destructive">{losses}</span>
@@ -147,7 +172,7 @@ export function MatchDetailPage() {
                 <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                   {item.title}
                 </h3>
-                <p className="text-sm">{item.value}</p>
+                <p className="text-sm break-words [overflow-wrap:anywhere]">{item.value}</p>
               </div>
             ))}
           </section>

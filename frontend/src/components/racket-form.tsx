@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { OptionGroup } from "@/components/ui/option-group";
 import { Textarea } from "@/components/ui/textarea";
 import type { RacketPayload, RacketServiceKind, RacketServicePayload } from "@/lib/api";
-import { parseMoney } from "@/lib/format";
+import { dateInputError, formatInputDate, parseMoney, todayInputValue } from "@/lib/format";
 
 export type RacketFormValues = {
   name: string;
@@ -38,12 +38,6 @@ const serviceKinds: { value: RacketServiceKind; label: string }[] = [
   { value: "Grip", label: "Cushion grip" },
   { value: "Outro", label: "Outro" },
 ];
-
-function today() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset() * 60_000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
-}
 
 function parseTension(value: string): number | null {
   const parsed = Number(value.replace(",", "."));
@@ -81,10 +75,11 @@ export function RacketForm({
   useScrollToFieldError(formRef, submitCount);
   const [services, setServices] = useState<RacketServicePayload[]>(defaultServices);
   const [kind, setKind] = useState<RacketServiceKind>("Corda");
-  const [changedAt, setChangedAt] = useState(today);
+  const [changedAt, setChangedAt] = useState(todayInputValue);
   const [detail, setDetail] = useState("");
   const [serviceTension, setServiceTension] = useState("");
   const [addOpen, setAddOpen] = useState(defaultServices.length === 0);
+  const [serviceDateError, setServiceDateError] = useState<string | null>(null);
 
   const name = watch("name");
   const stringName = watch("stringName");
@@ -95,6 +90,13 @@ export function RacketForm({
   const gripColor = watch("gripColor");
 
   function addService() {
+    const dateError = dateInputError(changedAt, { max: todayInputValue() });
+    if (dateError !== true) {
+      setServiceDateError(dateError);
+      return;
+    }
+    setServiceDateError(null);
+
     const tension = kind === "Corda" ? parseTension(serviceTension) : null;
     const next: RacketServicePayload = {
       id: crypto.randomUUID(),
@@ -121,7 +123,7 @@ export function RacketForm({
 
     setDetail("");
     setServiceTension("");
-    setChangedAt(today());
+    setChangedAt(todayInputValue());
     setAddOpen(false);
   }
 
@@ -132,6 +134,7 @@ export function RacketForm({
   return (
     <form
       ref={formRef}
+      noValidate
       className="grid gap-5"
       onSubmit={handleSubmit((values) =>
         onSubmit({
@@ -232,7 +235,7 @@ export function RacketForm({
       <RacketPreview
         name={name}
         stringName={stringName}
-        tensionLb={tensionLb}
+        tensionLb={tensionPreview(tensionLb)}
         grip={grip}
         frameColor={frameColor}
         stringColor={stringColor}
@@ -268,14 +271,24 @@ export function RacketForm({
                 columns={2}
               />
             </Field>
-            <Field label="Data" htmlFor="service-date">
+            <Field
+              label="Data"
+              htmlFor="service-date"
+              hint={formatInputDate(changedAt) ?? undefined}
+              error={serviceDateError ?? undefined}
+            >
               <Input
                 id="service-date"
                 type="date"
+                lang="pt-BR"
                 className="bg-background"
-                max={today()}
+                max={todayInputValue()}
                 value={changedAt}
-                onChange={(event) => setChangedAt(event.target.value)}
+                aria-invalid={serviceDateError ? true : undefined}
+                onChange={(event) => {
+                  setChangedAt(event.target.value);
+                  setServiceDateError(null);
+                }}
               />
             </Field>
             <Field label="Detalhe" htmlFor="service-detail" hint="opcional">
@@ -329,6 +342,14 @@ export function RacketForm({
       </Button>
     </form>
   );
+}
+
+function tensionPreview(value: string): string {
+  const parsed = parseTension(value);
+  if (parsed == null) {
+    return "";
+  }
+  return String(parsed).replace(".", ",");
 }
 
 function SectionHeader({

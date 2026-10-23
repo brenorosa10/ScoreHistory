@@ -14,6 +14,7 @@ import { LoadingHint } from "@/components/ui/spinner";
 import type { MatchRecord } from "@/lib/api";
 import { DEFAULT_PAGE_SIZE } from "@/lib/api";
 import { formatMonth } from "@/lib/format";
+import { drawCount, recordSummary, WIN_RATE_HINT, winRatePercent } from "@/lib/record";
 import {
   dashboardSummaryQueryOptions,
   dashboardTipsQueryOptions,
@@ -21,12 +22,13 @@ import {
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
-type Filter = "all" | "wins" | "losses";
+type Filter = "all" | "wins" | "losses" | "draws";
 
 const filters: { value: Filter; label: string }[] = [
   { value: "all", label: "Todas" },
   { value: "wins", label: "Vitórias" },
   { value: "losses", label: "Derrotas" },
+  { value: "draws", label: "Empates" },
 ];
 
 export function HistoryPage() {
@@ -91,18 +93,29 @@ export function HistoryPage() {
           <>
             <section className="rounded-2xl bg-primary p-5 text-primary-foreground">
               <div className="flex items-center gap-5">
-                <WinRateRing value={summary?.winRate ?? 0} />
-                <div className="grid gap-2">
+                <WinRateRing
+                  value={winRatePercent(summary?.wins ?? 0, summary?.losses ?? 0)}
+                  label={WIN_RATE_HINT}
+                />
+                <div className="grid min-w-0 gap-2">
                   <p className="text-3xl leading-none font-bold">
                     {summary?.wins ?? 0}
                     <span className="opacity-60">-</span>
                     {summary?.losses ?? 0}
                   </p>
                   <p className="text-sm opacity-80">
+                    {recordSummary(
+                      summary?.wins ?? 0,
+                      drawCount(summary?.matches ?? 0, summary?.wins ?? 0, summary?.losses ?? 0, summary?.draws),
+                      summary?.losses ?? 0,
+                    )}
+                  </p>
+                  <p className="text-sm opacity-80">
                     {summary?.matches === 1
                       ? "1 partida registrada"
                       : `${summary?.matches ?? 0} partidas registradas`}
                   </p>
+                  <p className="text-xs opacity-70">{WIN_RATE_HINT}</p>
                   {summary?.streakCount ? (
                     <span className="w-fit rounded-full bg-primary-foreground/15 px-2.5 py-1 text-xs font-semibold">
                       {summary.streakCount} {summary.streakWon ? "vitórias" : "derrotas"} seguidas
@@ -136,7 +149,7 @@ export function HistoryPage() {
             <section className="grid gap-3">
               <div className="flex items-center justify-between gap-3">
                 <SectionTitle>Partidas</SectionTitle>
-                <div className="flex gap-1 rounded-full bg-muted p-1">
+                <div className="flex flex-wrap justify-end gap-1 rounded-full bg-muted p-1">
                   {filters.map((item) => (
                     <button
                       key={item.value}

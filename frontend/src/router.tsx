@@ -20,6 +20,7 @@ import { NewOpponentPage } from "@/pages/new-opponent-page";
 import { OpponentDetailPage } from "@/pages/opponent-detail-page";
 import { OpponentsPage } from "@/pages/opponents-page";
 import { ProfilePage } from "@/pages/profile-page";
+import { NotFoundPage } from "@/pages/not-found-page";
 import { RegisterPage } from "@/pages/register-page";
 import { NewRacketPage } from "@/pages/new-racket-page";
 import { EditRacketPage } from "@/pages/edit-racket-page";
@@ -66,13 +67,15 @@ const indexRoute = createRoute({
 const historyRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/historico",
-  validateSearch: (search: Record<string, unknown>): { page?: number; filtro?: "wins" | "losses" } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { page?: number; filtro?: "wins" | "losses" | "draws" } => {
     const page = Number(search.page);
-    const next: { page?: number; filtro?: "wins" | "losses" } = {};
+    const next: { page?: number; filtro?: "wins" | "losses" | "draws" } = {};
     if (Number.isFinite(page) && page > 0) {
       next.page = Math.floor(page);
     }
-    if (search.filtro === "wins" || search.filtro === "losses") {
+    if (search.filtro === "wins" || search.filtro === "losses" || search.filtro === "draws") {
       next.filtro = search.filtro;
     }
     return next;
@@ -216,6 +219,7 @@ export const router = createRouter({
   context: { queryClient },
   defaultPreload: "intent",
   defaultPreloadStaleTime: 0,
+  defaultNotFoundComponent: NotFoundPage,
   scrollRestoration: true,
 });
 
