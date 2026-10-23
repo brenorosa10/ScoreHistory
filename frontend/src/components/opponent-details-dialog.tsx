@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HeadToHead } from "@/lib/api";
 import { opponentMeta, toInitials } from "@/lib/format";
+import { drawCount, h2hScore, recordSummary } from "@/lib/record";
 import { opponentQueryOptions } from "@/lib/queries";
 
 type OpponentDetailsDialogProps = {
   opponentId: string | null;
-  h2h?: Pick<HeadToHead, "played" | "wins" | "losses" | "lastScore">;
+  h2h?: Pick<HeadToHead, "played" | "wins" | "losses" | "draws" | "lastScore">;
   onClose: () => void;
 };
 
@@ -24,6 +25,7 @@ export function OpponentDetailsDialog({ opponentId, h2h, onClose }: OpponentDeta
   const played = h2h?.played ?? opponent?.played ?? 0;
   const wins = h2h?.wins ?? opponent?.wins ?? 0;
   const losses = h2h?.losses ?? opponent?.losses ?? 0;
+  const draws = drawCount(played, wins, losses, h2h?.draws ?? opponent?.draws);
   const name = opponent?.name ?? "Adversário";
 
   return (
@@ -67,13 +69,12 @@ export function OpponentDetailsDialog({ opponentId, h2h, onClose }: OpponentDeta
                 <p className="text-sm font-semibold">Head to head</p>
                 <p className="text-xs text-muted-foreground">
                   {played} {played === 1 ? "jogo" : "jogos"}
+                  {draws > 0 ? ` · ${recordSummary(wins, draws, losses)}` : ""}
                   {h2h?.lastScore ? ` · último ${h2h.lastScore}` : ""}
                 </p>
               </div>
-              <p className="text-lg font-bold tabular-nums">
-                <span className="text-success">{wins}</span>
-                <span className="text-muted-foreground">-</span>
-                <span className="text-destructive">{losses}</span>
+              <p className="text-right text-sm font-bold tabular-nums" aria-label={recordSummary(wins, draws, losses)}>
+                {h2hScore(wins, losses, draws)}
               </p>
             </div>
           </div>
@@ -83,13 +84,13 @@ export function OpponentDetailsDialog({ opponentId, h2h, onClose }: OpponentDeta
               {opponent.strengths ? (
                 <p>
                   <span className="font-medium text-success">Forte: </span>
-                  <span className="text-muted-foreground">{opponent.strengths}</span>
+                  <span className="break-words text-muted-foreground [overflow-wrap:anywhere]">{opponent.strengths}</span>
                 </p>
               ) : null}
               {opponent.weaknesses ? (
                 <p>
                   <span className="font-medium text-destructive">Fraco: </span>
-                  <span className="text-muted-foreground">{opponent.weaknesses}</span>
+                  <span className="break-words text-muted-foreground [overflow-wrap:anywhere]">{opponent.weaknesses}</span>
                 </p>
               ) : null}
             </div>
@@ -98,7 +99,9 @@ export function OpponentDetailsDialog({ opponentId, h2h, onClose }: OpponentDeta
           )}
 
           {opponent.notes ? (
-            <p className="text-sm text-muted-foreground">{opponent.notes}</p>
+            <p className="line-clamp-4 text-sm break-words text-muted-foreground [overflow-wrap:anywhere]">
+              {opponent.notes}
+            </p>
           ) : null}
 
           <Button asChild variant="outline" className="w-full">

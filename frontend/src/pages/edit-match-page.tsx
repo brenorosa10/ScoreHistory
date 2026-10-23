@@ -5,9 +5,10 @@ import { useState } from "react";
 import { DeleteMatchDialog } from "@/components/delete-match-dialog";
 import { MatchForm, type MatchFormValues } from "@/components/match-form";
 import { PageHeader } from "@/components/page-header";
+import { ResourceMissing } from "@/components/resource-missing";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { updateMatch, type MatchPayload, type MatchRecord } from "@/lib/api";
+import { isNotFoundError, updateMatch, type MatchPayload, type MatchRecord } from "@/lib/api";
 import { COURT_TYPE_OPTIONS } from "@/lib/constants";
 import { matchQueryOptions, matchesQueryKey, dashboardQueryKey } from "@/lib/queries";
 import { parseScore } from "@/lib/score";
@@ -16,7 +17,7 @@ export function EditMatchPage() {
   const { matchId } = useParams({ from: "/app/partidas/$matchId/editar" });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: match, isPending, isError } = useQuery(matchQueryOptions(matchId));
+  const { data: match, isPending, isError, error } = useQuery(matchQueryOptions(matchId));
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const mutation = useMutation({
@@ -46,12 +47,20 @@ export function EditMatchPage() {
   }
 
   if (isError || !match) {
+    const missing = isNotFoundError(error);
     return (
       <>
         <PageHeader title="Editar partida" back />
-        <p className="px-4 pt-6 text-center text-sm text-destructive">
-          Não foi possível carregar a partida.
-        </p>
+        <ResourceMissing
+          title={missing ? "Partida não encontrada" : "Não foi possível carregar a partida"}
+          description={
+            missing
+              ? "Essa partida não existe ou foi excluída."
+              : "Tente novamente em instantes."
+          }
+          actionTo="/historico"
+          actionLabel="Voltar ao histórico"
+        />
       </>
     );
   }
@@ -82,7 +91,9 @@ export function EditMatchPage() {
         match={match}
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
-        onDeleted={() => navigate({ to: "/historico", replace: true })}
+        onDeleted={() => {
+          void navigate({ to: "/historico", replace: true });
+        }}
       />
     </>
   );

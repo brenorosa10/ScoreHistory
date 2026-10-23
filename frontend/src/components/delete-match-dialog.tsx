@@ -16,12 +16,13 @@ export function DeleteMatchDialog({ match, open, onClose, onDeleted }: DeleteMat
 
   const mutation = useMutation({
     mutationFn: (id: string) => deleteMatch(id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: matchesQueryKey });
-      await queryClient.invalidateQueries({ queryKey: opponentsQueryKey });
-      await queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
+    onSuccess: (_result, id) => {
+      queryClient.removeQueries({ queryKey: [...matchesQueryKey, id] });
+      void onDeleted?.();
       onClose();
-      await onDeleted?.();
+      void queryClient.invalidateQueries({ queryKey: matchesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: opponentsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
     },
   });
 

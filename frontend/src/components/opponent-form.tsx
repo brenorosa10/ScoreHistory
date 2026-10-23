@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -8,7 +8,7 @@ import { OptionGroup } from "@/components/ui/option-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useScrollToFieldError } from "@/hooks/use-scroll-to-field-error";
 import { HANDEDNESS_OPTIONS, OPPONENT_CLASS_OPTIONS } from "@/lib/constants";
-import type { OpponentPayload } from "@/lib/api";
+import { findOpponentByName, type OpponentPayload } from "@/lib/api";
 
 export type OpponentFormValues = {
   name: string;
@@ -23,13 +23,23 @@ type OpponentFormProps = {
   defaultValues?: Partial<OpponentFormValues>;
   submitLabel: string;
   pending?: boolean;
+  ignoreId?: string;
   onSubmit: (payload: OpponentPayload) => void;
 };
 
 const handednessOptions = HANDEDNESS_OPTIONS.map((option) => ({ value: option, label: option }));
 
-export function OpponentForm({ defaultValues, submitLabel, pending, onSubmit }: OpponentFormProps) {
+export function OpponentForm({
+  defaultValues,
+  submitLabel,
+  pending,
+  ignoreId,
+  onSubmit,
+}: OpponentFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [checking, setChecking] = useState(false);
+  const [duplicateName, setDuplicateName] = useState<string | null>(null);
+  const pendingPayload = useRef<OpponentPayload | null>(null);
   const {
     register,
     control,
@@ -48,20 +58,40 @@ export function OpponentForm({ defaultValues, submitLabel, pending, onSubmit }: 
   });
   useScrollToFieldError(formRef, submitCount);
 
+  function toPayload(values: OpponentFormValues): OpponentPayload {
+    return {
+      name: values.name,
+      handedness: values.handedness,
+      class: values.class,
+      strengths: values.strengths,
+      weaknesses: values.weaknesses,
+      notes: values.notes,
+    };
+  }
+
   return (
     <form
       ref={formRef}
       className="grid gap-4"
-      onSubmit={handleSubmit((values) =>
-        onSubmit({
-          name: values.name,
-          handedness: values.handedness,
-          class: values.class,
-          strengths: values.strengths,
-          weaknesses: values.weaknesses,
-          notes: values.notes,
-        }),
-      )}
+      onSubmit={handleSubmit(async (values) => {
+        const payload = toPayload(values);
+        setDuplicateName(null);
+        setChecking(true);
+        try {
+          const existing = await findOpponentByName(payload.name, ignoreId);
+          if (existing) {
+            pendingPayload.current = payload;
+            setDuplicateName(existing.name);
+            return;
+          }
+        } catch {
+          // A failed lookup should not block saving the opponent.
+        } finally {
+          setChecking(false);
+        }
+
+        onSubmit(payload);
+      })}
     >
       <Field label="Nome" htmlFor="opponent-name" error={errors.name?.message}>
         <Input
@@ -128,8 +158,34 @@ export function OpponentForm({ defaultValues, submitLabel, pending, onSubmit }: 
         />
       </Field>
 
-      <Button type="submit" size="lg" loading={pending}>
-        {pending ? "Salvando..." : submitLabel}
+      {duplicateName ? (
+        <div role="alert" className="grid gap-3 rounded-xl bg-warning/10 px-3 py-3 text-sm">
+          <p>
+            Já existe um adversário chamado <span className="font-semibold">{duplicateName}</span>. O
+            nome repete na lista e no seletor de partidas. Deseja cadastrar mesmo assim?
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" variant="outline" onClick={() => setDuplicateName(null)}>
+              Voltar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                const payload = pendingPayload.current;
+                setDuplicateName(null);
+                if (payload) {
+                  onSubmit(payload);
+                }
+              }}
+            >
+              Continuar mesmo assim
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <Button type="submit" size="lg" loading={pending || checking}>
+        {pending ? "Salvando..." : checking ? "Verificando..." : submitLabel}
       </Button>
     </form>
   );

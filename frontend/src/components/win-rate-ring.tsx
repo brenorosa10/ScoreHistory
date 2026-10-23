@@ -1,16 +1,22 @@
 type WinRateRingProps = {
   value: number;
   size?: number;
+  label?: string;
 };
 
-export function WinRateRing({ value, size = 108 }: WinRateRingProps) {
+export function WinRateRing({ value, size = 108, label }: WinRateRingProps) {
   const stroke = 10;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - Math.min(Math.max(value, 0), 100) / 100);
 
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div
+      className="relative shrink-0"
+      style={{ width: size, height: size }}
+      role="img"
+      aria-label={label ? `${value}%. ${label}` : `${value}% de vitórias entre partidas decididas`}
+    >
       <svg width={size} height={size} className="-rotate-90">
         <circle
           cx={size / 2}

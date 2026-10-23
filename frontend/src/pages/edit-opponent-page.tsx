@@ -2,15 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { OpponentForm, type OpponentFormValues } from "@/components/opponent-form";
 import { PageHeader } from "@/components/page-header";
+import { ResourceMissing } from "@/components/resource-missing";
 import { Skeleton } from "@/components/ui/skeleton";
-import { updateOpponent, type Opponent, type OpponentPayload } from "@/lib/api";
+import { isNotFoundError, updateOpponent, type Opponent, type OpponentPayload } from "@/lib/api";
 import { dashboardQueryKey, matchesQueryKey, opponentQueryOptions, opponentsQueryKey } from "@/lib/queries";
 
 export function EditOpponentPage() {
   const { opponentId } = useParams({ from: "/app/adversarios/$opponentId/editar" });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: opponent, isPending, isError } = useQuery(opponentQueryOptions(opponentId));
+  const { data: opponent, isPending, isError, error } = useQuery(opponentQueryOptions(opponentId));
 
   const mutation = useMutation({
     mutationFn: (payload: OpponentPayload) => updateOpponent(opponentId, payload),
@@ -35,12 +36,20 @@ export function EditOpponentPage() {
   }
 
   if (isError || !opponent) {
+    const missing = isNotFoundError(error);
     return (
       <>
         <PageHeader title="Editar adversário" back />
-        <p className="px-4 pt-6 text-center text-sm text-destructive">
-          Não foi possível carregar o adversário.
-        </p>
+        <ResourceMissing
+          title={missing ? "Adversário não encontrado" : "Não foi possível carregar o adversário"}
+          description={
+            missing
+              ? "Esse adversário não existe ou foi removido."
+              : "Tente novamente em instantes."
+          }
+          actionTo="/adversarios"
+          actionLabel="Voltar aos adversários"
+        />
       </>
     );
   }
@@ -52,6 +61,7 @@ export function EditOpponentPage() {
         <div className="rounded-2xl border bg-card p-4 shadow-xs">
           <OpponentForm
             defaultValues={toFormValues(opponent)}
+            ignoreId={opponent.id}
             submitLabel="Salvar alterações"
             pending={mutation.isPending}
             onSubmit={(payload) => mutation.mutate(payload)}

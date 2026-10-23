@@ -46,9 +46,22 @@ export function formatRelativeDays(value: string): string {
   return years === 1 ? "há 1 ano" : `há ${years} anos`;
 }
 
+const graphemeSegmenter = new Intl.Segmenter("pt-BR", { granularity: "grapheme" });
+
+function firstGrapheme(value: string): string {
+  const segment = graphemeSegmenter.segment(value)[Symbol.iterator]().next().value?.segment ?? "";
+  return segment.toLocaleUpperCase("pt-BR");
+}
+
+/** First grapheme of each of the first two words, so emoji names are not split into surrogates. */
 export function toInitials(value: string): string {
-  const parts = value.trim().split(/\s+/).slice(0, 2);
-  return parts.map((part) => part.charAt(0).toUpperCase()).join("") || "?";
+  const parts = value.trim().split(/\s+/).filter(Boolean).slice(0, 2);
+  const initials = parts.map((part) => firstGrapheme(part)).join("");
+  return initials || "?";
+}
+
+export function normalizeOpponentName(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
 }
 
 export function opponentMeta(handedness: string, playingClass?: string | null): string {
@@ -72,12 +85,70 @@ export function moneyToInput(value: number | null | undefined): string {
 }
 
 export function parseMoney(value: string): number | null {
-  const trimmed = value.trim();
-  if (!trimmed) {
+  const trimmed = value.trim().replace(/\s/g, "").replace(/^r\$/i, "");
+  if (!trimmed || !/^[\d.,]+$/.test(trimmed)) {
     return null;
   }
-  const parsed = Number(trimmed.replace(",", "."));
+
+  const lastComma = trimmed.lastIndexOf(",");
+  const lastDot = trimmed.lastIndexOf(".");
+  let normalized: string;
+
+  if (lastComma >= 0 && lastDot >= 0) {
+    normalized =
+      lastComma > lastDot
+        ? trimmed.replace(/\./g, "").replace(",", ".")
+        : trimmed.replace(/,/g, "");
+  } else if (lastComma >= 0) {
+    normalized = trimmed.replace(",", ".");
+  } else if (lastDot >= 0) {
+    const groups = trimmed.split(".");
+    const fraction = groups.at(-1) ?? "";
+    normalized = groups.length > 2 || fraction.length === 3 ? groups.join("") : trimmed;
+  } else {
+    normalized = trimmed;
+  }
+
+  const parsed = Number(normalized);
   return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) / 100 : null;
+}
+
+export function formatInputDate(value: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+
+  return fullDateFormatter.format(date);
+}
+
+export function dateInputError(
+  value: string,
+  options?: { required?: boolean; max?: string },
+): true | string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return options?.required === false ? true : "Informe a data.";
+  }
+
+  if (!formatInputDate(trimmed)) {
+    return "Informe uma data válida.";
+  }
+
+  if (options?.max && trimmed > options.max) {
+    const maxLabel = formatInputDate(options.max) ?? options.max;
+    return `A data deve ser ${maxLabel} ou anterior.`;
+  }
+
+  return true;
 }
 
 export function todayInputValue(): string {

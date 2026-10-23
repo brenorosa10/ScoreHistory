@@ -24,6 +24,7 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
         int Matches,
         int Wins,
         int Losses,
+        int Draws,
         int WinRate,
         int Opponents,
         int? StreakCount,
@@ -36,6 +37,7 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
         int Played,
         int Wins,
         int Losses,
+        int Draws,
         string LastScore);
 
     public sealed record DashboardTipsResponse(IReadOnlyList<string> Tips);
@@ -58,8 +60,9 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
         var opponents = await db.Opponents.CountAsync(opponent => opponent.UserId == userId, cancellationToken);
         var wins = matches.Count(match => match.Won == true);
         var losses = matches.Count(match => match.Won == false);
+        var draws = matches.Count(match => match.Won == null);
         var decided = wins + losses;
-        var winRate = decided == 0 ? 0 : (int)Math.Round(wins * 100d / decided);
+        var winRate = decided == 0 ? 0 : (int)Math.Round(wins * 100d / decided, MidpointRounding.AwayFromZero);
         var streak = BuildStreak(matches);
         var latest = matches.Count == 0 ? null : ToLatest(matches[0]);
 
@@ -67,6 +70,7 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             matches.Count,
             wins,
             losses,
+            draws,
             winRate,
             opponents,
             streak?.Count,
@@ -115,18 +119,20 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
                 return NotFound(new { message = "Adversário não encontrado." });
             }
 
-            return Ok(new HeadToHeadResponse(opponent.Id, opponent.Name, 0, 0, 0, string.Empty));
+            return Ok(new HeadToHeadResponse(opponent.Id, opponent.Name, 0, 0, 0, 0, string.Empty));
         }
 
         var first = matches[0];
         var wins = matches.Count(match => match.Won == true);
         var losses = matches.Count(match => match.Won == false);
+        var draws = matches.Count(match => match.Won == null);
         return Ok(new HeadToHeadResponse(
             first.OpponentId,
             first.Opponent?.Name ?? "Adversário",
             matches.Count,
             wins,
             losses,
+            draws,
             first.Score));
     }
 
@@ -196,6 +202,7 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
                     0,
                     0,
                     0,
+                    0,
                     match.Score);
             }
 
@@ -203,7 +210,8 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             {
                 Played = current.Played + 1,
                 Wins = current.Wins + (match.Won == true ? 1 : 0),
-                Losses = current.Losses + (match.Won == false ? 1 : 0)
+                Losses = current.Losses + (match.Won == false ? 1 : 0),
+                Draws = current.Draws + (match.Won == null ? 1 : 0)
             };
         }
 

@@ -45,7 +45,8 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
         string? Notes,
         int Played,
         int Wins,
-        int Losses);
+        int Losses,
+        int Draws);
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<OpponentResponse>>> List(
@@ -85,7 +86,8 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
                 opponent.Notes,
                 db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue),
                 db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == true),
-                db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == false)))
+                db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == false),
+                db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == null)))
             .ToListAsync(cancellationToken);
 
         return Ok(new PagedResult<OpponentResponse>(opponents, resolvedPage, resolvedPageSize, totalCount));
@@ -118,8 +120,43 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
         var losses = await db.Matches.CountAsync(
             match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == false,
             cancellationToken);
+        var draws = await db.Matches.CountAsync(
+            match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == null,
+            cancellationToken);
 
-        return Ok(ToResponse(opponent, played, wins, losses));
+        return Ok(ToResponse(opponent, played, wins, losses, draws));
+    }
+
+    [HttpGet("lookup")]
+    public async Task<ActionResult<OpponentResponse>> Lookup(
+        [FromQuery] string? name,
+        [FromQuery] Guid? exceptId,
+        CancellationToken cancellationToken)
+    {
+        var userId = CurrentUser.GetId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var normalized = NormalizeName(name);
+        if (normalized.Length == 0)
+        {
+            return NoContent();
+        }
+
+        var userIdValue = userId.Value;
+        var opponents = await db.Opponents
+            .Where(opponent => opponent.UserId == userIdValue)
+            .ToListAsync(cancellationToken);
+        var duplicate = opponents.FirstOrDefault(opponent =>
+            opponent.Id != exceptId && NormalizeName(opponent.Name) == normalized);
+        if (duplicate is null)
+        {
+            return NoContent();
+        }
+
+        return Ok(ToResponse(duplicate));
     }
 
     [HttpPost]
@@ -210,8 +247,24 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
         return Ok(ToResponse(opponent));
     }
 
-    private static OpponentResponse ToResponse(Opponent opponent, int played = 0, int wins = 0, int losses = 0) =>
-        new(opponent.Id, opponent.Name, opponent.Handedness, opponent.Class, opponent.Strengths, opponent.Weaknesses, opponent.Notes, played, wins, losses);
+    private static OpponentResponse ToResponse(
+        Opponent opponent,
+        int played = 0,
+        int wins = 0,
+        int losses = 0,
+        int draws = 0) =>
+        new(opponent.Id, opponent.Name, opponent.Handedness, opponent.Class, opponent.Strengths, opponent.Weaknesses, opponent.Notes, played, wins, losses, draws);
+
+    private static string NormalizeName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "";
+        }
+
+        var parts = name.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        return string.Join(' ', parts).ToLowerInvariant();
+    }
 
     private static bool IsValidClass(string? value) =>
         !string.IsNullOrWhiteSpace(value) && Classes.Contains(value.Trim());

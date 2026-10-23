@@ -92,6 +92,7 @@ function StatusTile({
   return (
     <Link
       to="/perfil"
+      aria-label={`${title}: ${changedAt ? formatRelativeDays(changedAt) : emptyLabel}`}
       className="relative grid min-w-0 gap-3 overflow-hidden rounded-2xl border bg-card p-3.5 shadow-xs transition-colors active:bg-accent"
     >
       <span
@@ -108,7 +109,7 @@ function StatusTile({
             tone ? WEAR_TONE_CLASS[tone] : "bg-muted text-muted-foreground",
           )}
         >
-          <Icon className="size-5" />
+          <Icon className="size-5" aria-hidden />
         </span>
         {days != null ? (
           <span

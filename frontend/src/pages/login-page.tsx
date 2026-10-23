@@ -47,7 +47,7 @@ export function LoginPage() {
         <>
           Não tem conta?{" "}
           <Link to="/cadastro" className="font-medium text-foreground underline-offset-4 hover:underline">
-            Criar usuário
+            Criar conta
           </Link>
         </>
       }

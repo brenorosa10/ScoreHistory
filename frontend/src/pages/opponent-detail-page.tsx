@@ -5,13 +5,15 @@ import { useEffect, useMemo, useState } from "react";
 import { DeleteMatchDialog } from "@/components/delete-match-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { ResourceMissing } from "@/components/resource-missing";
 import { Pagination } from "@/components/pagination";
 import { SwipeableMatchRow } from "@/components/swipeable-match-row";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingHint } from "@/components/ui/spinner";
-import { DEFAULT_PAGE_SIZE, type MatchRecord } from "@/lib/api";
+import { DEFAULT_PAGE_SIZE, isNotFoundError, type MatchRecord } from "@/lib/api";
 import { formatMonth, opponentMeta, toInitials } from "@/lib/format";
+import { drawCount, h2hScore, recordSummary } from "@/lib/record";
 import { matchesQueryOptions, opponentQueryOptions } from "@/lib/queries";
 
 export function OpponentDetailPage() {
@@ -19,7 +21,12 @@ export function OpponentDetailPage() {
   const navigate = useNavigate({ from: "/adversarios/$opponentId" });
   const search = useSearch({ from: "/app/adversarios/$opponentId" });
   const page = search.page ?? 1;
-  const { data: opponent, isPending: opponentPending, isError } = useQuery(opponentQueryOptions(opponentId));
+  const {
+    data: opponent,
+    isPending: opponentPending,
+    isError,
+    error,
+  } = useQuery(opponentQueryOptions(opponentId));
   const { data: matchesPage, isPending: matchesPending, isFetching: matchesFetching } = useQuery(
     matchesQueryOptions({
       page,
@@ -58,19 +65,28 @@ export function OpponentDetailPage() {
   }
 
   if (isError || !opponent) {
+    const missing = isNotFoundError(error);
     return (
       <>
         <PageHeader title="Confrontos" back />
-        <p className="px-4 pt-6 text-center text-sm text-destructive">
-          Não foi possível carregar o adversário.
-        </p>
+        <ResourceMissing
+          title={missing ? "Adversário não encontrado" : "Não foi possível carregar o adversário"}
+          description={
+            missing
+              ? "Esse adversário não existe ou foi removido."
+              : "Tente novamente em instantes."
+          }
+          actionTo="/adversarios"
+          actionLabel="Voltar aos adversários"
+        />
       </>
     );
   }
 
   const played = opponent.played ?? 0;
   const wins = opponent.wins ?? 0;
-  const losses = opponent.losses ?? Math.max(0, played - wins);
+  const losses = opponent.losses ?? 0;
+  const draws = drawCount(played, wins, losses, opponent.draws);
 
   return (
     <>
@@ -100,31 +116,27 @@ export function OpponentDetailPage() {
                 {opponentMeta(opponent.handedness, opponent.class)}
               </p>
             </div>
-            <p className="text-lg font-bold tabular-nums">
-              <span className="text-success">{wins}</span>
-              <span className="text-muted-foreground">-</span>
-              <span className="text-destructive">{losses}</span>
+            <p className="text-right text-sm font-semibold tabular-nums" aria-label={recordSummary(wins, draws, losses)}>
+              {played > 0 ? h2hScore(wins, losses, draws) : "0-0"}
             </p>
           </div>
           <p className="text-xs text-muted-foreground">
             {played === 0
               ? "Nenhum confronto registrado"
-              : played === 1
-                ? "1 confronto"
-                : `${played} confrontos`}
+              : `${played === 1 ? "1 confronto" : `${played} confrontos`} · ${recordSummary(wins, draws, losses)}`}
           </p>
           {opponent.strengths || opponent.weaknesses ? (
             <div className="grid gap-1 border-t pt-3 text-sm">
               {opponent.strengths ? (
                 <p>
                   <span className="font-medium text-success">Forte: </span>
-                  <span className="text-muted-foreground">{opponent.strengths}</span>
+                  <span className="text-muted-foreground break-words [overflow-wrap:anywhere]">{opponent.strengths}</span>
                 </p>
               ) : null}
               {opponent.weaknesses ? (
                 <p>
                   <span className="font-medium text-destructive">Fraco: </span>
-                  <span className="text-muted-foreground">{opponent.weaknesses}</span>
+                  <span className="text-muted-foreground break-words [overflow-wrap:anywhere]">{opponent.weaknesses}</span>
                 </p>
               ) : null}
             </div>

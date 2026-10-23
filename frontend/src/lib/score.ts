@@ -86,6 +86,97 @@ export function hasPlayedScore(entries: ScoreEntry[]): boolean {
   return entries.some((entry) => entry.home !== "0" || entry.away !== "0");
 }
 
+export type MatchResultChoice = "true" | "false" | "draw";
+
+function wholeNumber(value: string | undefined): number | null {
+  if (value == null || value.trim() === "" || !/^\d+$/.test(value.trim())) {
+    return null;
+  }
+  return Number(value);
+}
+
+/** A completed set: 6-0..6-4, 7-5 or 7-6, and the same scores reversed. */
+export function isRegulationSet(home: number, away: number): boolean {
+  const high = Math.max(home, away);
+  const low = Math.min(home, away);
+  if (high === 6 && low <= 4) {
+    return true;
+  }
+  return high === 7 && (low === 5 || low === 6);
+}
+
+function isValidEntry(entry: ScoreEntry): boolean {
+  const home = wholeNumber(entry.home);
+  const away = wholeNumber(entry.away);
+  if (home == null || away == null) {
+    return false;
+  }
+
+  if (entry.kind === "tiebreak") {
+    return home !== away;
+  }
+
+  if (!isRegulationSet(home, away)) {
+    return false;
+  }
+
+  const tbHomeRaw = entry.tbHome?.trim() ?? "";
+  const tbAwayRaw = entry.tbAway?.trim() ?? "";
+  if (!tbHomeRaw && !tbAwayRaw) {
+    return true;
+  }
+
+  if (!isSetTiebreakScore(entry.home, entry.away) || !tbHomeRaw || !tbAwayRaw) {
+    return false;
+  }
+
+  const tbHome = wholeNumber(tbHomeRaw);
+  const tbAway = wholeNumber(tbAwayRaw);
+  if (tbHome == null || tbAway == null || tbHome === tbAway) {
+    return false;
+  }
+
+  return tbHome > tbAway === home > away;
+}
+
+export function isValidScore(entries: ScoreEntry[]): boolean {
+  return entries.length > 0 && entries.every(isValidEntry);
+}
+
+export function resultMismatchMessage(
+  entries: ScoreEntry[],
+  won: MatchResultChoice,
+): string | null {
+  const winner = resolveWinner(entries);
+  const marked = won === "draw" ? "empate" : won === "true" ? "vitória" : "derrota";
+
+  if (won === "draw") {
+    return winner === null
+      ? null
+      : `O placar aponta ${winner === "home" ? "vitória" : "derrota"}, mas você marcou empate.`;
+  }
+
+  if (winner === null) {
+    return "O placar está empatado. Marque empate ou ajuste os games.";
+  }
+
+  const homeWon = winner === "home";
+  if (homeWon !== (won === "true")) {
+    return `O placar aponta ${homeWon ? "vitória" : "derrota"}, mas você marcou ${marked}.`;
+  }
+
+  return null;
+}
+
+/** Message shown next to the score. Invalid sets take priority over the result check. */
+export function scoreFieldError(entries: ScoreEntry[], won: MatchResultChoice): string | null {
+  if (!isValidScore(entries)) {
+    return "Placar inválido";
+  }
+
+  return resultMismatchMessage(entries, won);
+}
+
 /** Who took more sets, so the form can warn when the score contradicts the selected result. */
 export function resolveWinner(entries: ScoreEntry[]): "home" | "away" | null {
   let home = 0;

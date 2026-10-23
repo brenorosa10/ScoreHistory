@@ -20,6 +20,20 @@ export type UserResponse = {
   name: string | null;
 };
 
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+export function isNotFoundError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}
+
 async function readError(response: Response, fallback: string): Promise<string> {
   const error = (await response.json().catch(() => null)) as { message?: string } | null;
   return error?.message ?? fallback;
@@ -49,7 +63,7 @@ export async function createUser(
   });
 
   if (!response.ok) {
-    throw new Error(await readError(response, "Não foi possível criar o usuário."));
+    throw new ApiError(await readError(response, "Não foi possível criar o usuário."), response.status);
   }
 
   return response.json() as Promise<UserResponse>;
@@ -63,7 +77,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
   });
 
   if (!response.ok) {
-    throw new Error(await readError(response, "Falha no login."));
+    throw new ApiError(await readError(response, "Falha no login."), response.status);
   }
 
   return response.json() as Promise<AuthResponse>;
@@ -75,7 +89,7 @@ export async function me(accessToken: string): Promise<MeResponse> {
   });
 
   if (!response.ok) {
-    throw new Error("Sessão inválida.");
+    throw new ApiError("Sessão inválida.", response.status);
   }
 
   return response.json() as Promise<MeResponse>;
@@ -92,6 +106,7 @@ export type Opponent = {
   played?: number;
   wins?: number;
   losses?: number;
+  draws?: number;
 };
 
 export type OpponentPayload = {
@@ -162,6 +177,7 @@ export type DashboardSummary = {
   matches: number;
   wins: number;
   losses: number;
+  draws?: number;
   winRate: number;
   opponents: number;
   streakCount: number | null;
@@ -182,6 +198,7 @@ export type HeadToHead = {
   played: number;
   wins: number;
   losses: number;
+  draws?: number;
   lastScore: string;
 };
 
@@ -240,7 +257,7 @@ function authHeaders(): HeadersInit {
 
 async function parseJson<T>(response: Response, fallback: string): Promise<T> {
   if (!response.ok) {
-    throw new Error(await readError(response, fallback));
+    throw new ApiError(await readError(response, fallback), response.status);
   }
 
   return response.json() as Promise<T>;
@@ -277,6 +294,20 @@ export async function createOpponent(payload: OpponentPayload): Promise<Opponent
     body: JSON.stringify(payload),
   });
   return parseJson(response, "Não foi possível cadastrar o adversário.");
+}
+
+export async function findOpponentByName(name: string, exceptId?: string): Promise<Opponent | null> {
+  const response = await fetch(
+    `${API_URL}/api/opponents/lookup${toQuery({
+      name: name.trim(),
+      exceptId,
+    })}`,
+    { headers: authHeaders() },
+  );
+  if (response.status === 204) {
+    return null;
+  }
+  return parseJson(response, "Não foi possível verificar o nome.");
 }
 
 export async function getOpponent(id: string): Promise<Opponent> {
@@ -358,7 +389,7 @@ export async function deleteMatch(id: string): Promise<void> {
     headers: authHeaders(),
   });
   if (!response.ok) {
-    throw new Error(await readError(response, "Não foi possível excluir a partida."));
+    throw new ApiError(await readError(response, "Não foi possível excluir a partida."), response.status);
   }
 }
 
