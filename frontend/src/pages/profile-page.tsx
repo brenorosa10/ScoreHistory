@@ -27,17 +27,22 @@ export function ProfilePage() {
   const [sports, setSports] = useState<PlayerSport[] | null>(null);
   const selectedSports = sports ?? sportsOrTennis(user?.sports);
   const sportsMutation = useMutation({
-    mutationFn: () => updateMySports(selectedSports),
-    onSuccess: async (updated) => {
-      queryClient.setQueryData(meQueryKey, {
+    mutationFn: (next: PlayerSport[]) => updateMySports(next),
+    onSuccess: async (updated, next) => {
+      const saved = sportsOrTennis(updated.sports ?? next);
+      const nextUser = {
         id: updated.id,
         email: updated.email,
         name: updated.name ?? user?.name ?? null,
-        sports: updated.sports ?? selectedSports,
+        sports: saved,
         sportsConfirmed: true,
-      });
-      setSports(null);
+      };
+      queryClient.setQueryData(meQueryKey, nextUser);
+      setSports(saved);
       await queryClient.invalidateQueries({ queryKey: meQueryKey });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      await queryClient.invalidateQueries({ queryKey: ["opponents"] });
+      await queryClient.invalidateQueries({ queryKey: ["matches"] });
     },
   });
   const { data: summary, isPending: summaryPending } = useQuery(dashboardSummaryQueryOptions());
@@ -60,7 +65,7 @@ export function ProfilePage() {
     <>
       <PageHeader title="Perfil" description="Sua conta, equipamento e custos" />
 
-      <main className="grid min-w-0 gap-5 overflow-x-hidden px-4 pt-4 pb-6">
+      <main className="grid min-w-0 gap-5 px-4 pt-4 pb-6">
         {isPending ? (
           <section className="grid gap-4 rounded-2xl border bg-card p-5 shadow-xs">
             <div className="flex items-center gap-4">
@@ -130,7 +135,7 @@ export function ProfilePage() {
               if (selectedSports.length === 0) {
                 return;
               }
-              sportsMutation.mutate();
+              sportsMutation.mutate(selectedSports);
             }}
           >
             {sportsMutation.isPending ? "Salvando..." : "Salvar esportes"}

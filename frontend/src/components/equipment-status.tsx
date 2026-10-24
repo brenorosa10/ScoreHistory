@@ -173,10 +173,10 @@ function StatusTile({
       </div>
       <div className="min-w-0">
         <p className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
-        <p className="mt-0.5 truncate text-sm font-semibold">
+        <p className="mt-0.5 text-sm font-semibold break-words">
           {changedAt ? capitalize(formatRelativeDays(changedAt)) : emptyLabel}
         </p>
-        <p className="truncate text-[0.65rem] text-muted-foreground">{average ?? subtitle}</p>
+        <p className="text-[0.65rem] break-words text-muted-foreground">{average ?? subtitle}</p>
         <p className="text-[0.65rem] font-semibold text-primary">Troquei hoje</p>
       </div>
     </button>

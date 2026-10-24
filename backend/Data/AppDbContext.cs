@@ -25,7 +25,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(user => user.Email).HasMaxLength(256).IsRequired();
             entity.Property(user => user.Name).HasMaxLength(256);
             entity.Property(user => user.PasswordHash).IsRequired();
-            entity.Property(user => user.Sports).HasMaxLength(64).IsRequired();
+            entity.Property(user => user.Sports).HasMaxLength(64);
         });
 
         modelBuilder.Entity<Opponent>(entity =>

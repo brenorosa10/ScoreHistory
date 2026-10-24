@@ -253,10 +253,10 @@ function ExpenseRow({ expense }: { expense: ExpenseRecord }) {
   });
 
   return (
-    <li className="flex items-center gap-2 px-3 py-2.5">
+    <li className="flex items-start gap-2 px-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{CATEGORY_LABEL[expense.category] ?? expense.category}</p>
-        {expense.note ? <p className="truncate text-xs text-muted-foreground">{expense.note}</p> : null}
+        <p className="text-sm font-medium break-words">{CATEGORY_LABEL[expense.category] ?? expense.category}</p>
+        {expense.note ? <p className="text-xs break-words text-muted-foreground">{expense.note}</p> : null}
       </div>
       <p className="text-sm font-semibold tabular-nums">{formatMoney(expense.amount)}</p>
       <Button variant="ghost" size="icon-sm" aria-label="Editar gasto" onClick={() => setEditing(true)}>

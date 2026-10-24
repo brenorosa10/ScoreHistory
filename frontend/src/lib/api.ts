@@ -96,7 +96,23 @@ export async function me(accessToken: string): Promise<MeResponse> {
     throw new ApiError("Sessão inválida.", response.status);
   }
 
-  return response.json() as Promise<MeResponse>;
+  const body = (await response.json()) as MeResponse & { Sports?: unknown; sports?: unknown };
+  return {
+    ...body,
+    sports: readSports(body),
+    sportsConfirmed: body.sportsConfirmed !== false,
+  };
+}
+
+function readSports(body: { sports?: unknown; Sports?: unknown }): string[] {
+  const raw = body.sports ?? body.Sports;
+  if (Array.isArray(raw)) {
+    return raw.filter((item): item is string => typeof item === "string");
+  }
+  if (typeof raw === "string") {
+    return raw.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
 }
 
 export type Opponent = {

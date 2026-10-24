@@ -80,15 +80,12 @@ public sealed class UsersController(UserStore users) : ControllerBase
             return BadRequest(new { message = "Esporte inválido." });
         }
 
-        var user = await users.FindByIdAsync(userId.Value, cancellationToken);
+        var user = await users.UpdateSportsAsync(userId.Value, sports, cancellationToken);
         if (user is null)
         {
             return NotFound(new { message = "Usuário não encontrado." });
         }
 
-        user.Sports = Sports.Format(sports);
-        user.SportsConfirmed = true;
-        await users.SaveAsync(user, cancellationToken);
         return Ok(ToResponse(user));
     }
 

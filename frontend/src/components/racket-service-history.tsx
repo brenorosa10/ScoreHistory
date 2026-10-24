@@ -61,8 +61,8 @@ export function RacketServiceHistory({ services, onRemove }: RacketServiceHistor
                 <Icon className="size-3.5" />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-xs text-muted-foreground">{SERVICE_KIND_META[kind].label}</p>
-                <p className="truncate text-sm font-medium">{formatRelativeDays(service.changedAt)}</p>
+                <p className="text-xs break-words text-muted-foreground">{SERVICE_KIND_META[kind].label}</p>
+                <p className="text-sm font-medium break-words">{formatRelativeDays(service.changedAt)}</p>
               </div>
             </div>
           );
@@ -122,7 +122,7 @@ export function RacketServiceHistory({ services, onRemove }: RacketServiceHistor
                     ) : null}
                   </div>
                   {service.detail ? (
-                    <p className="truncate text-sm text-muted-foreground">{service.detail}</p>
+                    <p className="text-sm break-words text-muted-foreground">{service.detail}</p>
                   ) : null}
                   <p className="text-xs text-muted-foreground">
                     {formatFullDate(service.changedAt)} · {formatRelativeDays(service.changedAt)}

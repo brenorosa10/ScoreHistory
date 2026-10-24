@@ -25,6 +25,32 @@ public sealed class UserStore(AppDbContext db)
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Writes sports for an existing account, including one that only has the schema default
+    /// (Tênis, never confirmed in the app) or a null/blank column.
+    /// </summary>
+    public async Task<User?> UpdateSportsAsync(
+        Guid id,
+        IReadOnlyList<string> sports,
+        CancellationToken cancellationToken = default)
+    {
+        var formatted = Sports.Format(sports);
+        var updated = await db.Users
+            .Where(user => user.Id == id)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(user => user.Sports, formatted)
+                    .SetProperty(user => user.SportsConfirmed, true),
+                cancellationToken);
+        if (updated == 0)
+        {
+            return null;
+        }
+
+        db.ChangeTracker.Clear();
+        return await FindByIdAsync(id, cancellationToken);
+    }
+
     public bool VerifyPassword(User user, string password) =>
         _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password)
             is not PasswordVerificationResult.Failed;
