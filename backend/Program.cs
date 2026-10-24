@@ -270,60 +270,8 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
                   SELECT 1 FROM ball_cans existing WHERE existing."UserId" = finance."UserId"
               );
 
-            INSERT INTO ball_openings ("Id", "UserId", "BallCanId", "OpenedAt")
-            SELECT gen_random_uuid(), ball."UserId", ball."Id", ball."LastOpenedAt"
-            FROM ball_cans ball
-            WHERE ball."LastOpenedAt" IS NOT NULL
-              AND NOT EXISTS (
-                  SELECT 1 FROM ball_openings opening WHERE opening."BallCanId" = ball."Id"
-              );
-
-            INSERT INTO expenses (
-                "Id", "UserId", "OccurredAt", "Category", "Amount", "RacketId", "RacketServiceId", "Note")
-            SELECT
-                gen_random_uuid(),
-                racket."UserId",
-                service."ChangedAt",
-                CASE service."Kind"
-                    WHEN 'Corda' THEN 'Corda'
-                    WHEN 'Overgrip' THEN 'Overgrip'
-                    WHEN 'Grip' THEN 'Grip'
-                    ELSE 'Outro'
-                END,
-                CASE service."Kind"
-                    WHEN 'Corda' THEN COALESCE(finance."StringPrice", 0)
-                    WHEN 'Overgrip' THEN COALESCE(finance."OvergripPrice", 0)
-                    WHEN 'Grip' THEN COALESCE(finance."CushionGripPrice", 0)
-                    ELSE 0
-                END,
-                racket."Id",
-                service."Id",
-                service."Detail"
-            FROM racket_services service
-            JOIN rackets racket ON racket."Id" = service."RacketId"
-            LEFT JOIN user_finance finance ON finance."UserId" = racket."UserId"
-            WHERE NOT EXISTS (
-                SELECT 1 FROM expenses existing WHERE existing."RacketServiceId" = service."Id"
-            );
-
-            INSERT INTO expenses (
-                "Id", "UserId", "OccurredAt", "Category", "Amount", "BallCanId", "BallOpeningId", "Note")
-            SELECT
-                gen_random_uuid(),
-                opening."UserId",
-                opening."OpenedAt",
-                'Bolinhas',
-                COALESCE(ball."CanPrice", finance."BallCanPrice", 0),
-                ball."Id",
-                opening."Id",
-                ball."Name"
-            FROM ball_openings opening
-            JOIN ball_cans ball ON ball."Id" = opening."BallCanId"
-            LEFT JOIN user_finance finance ON finance."UserId" = opening."UserId"
-            WHERE NOT EXISTS (
-                SELECT 1 FROM expenses existing WHERE existing."BallOpeningId" = opening."Id"
-            );
             """);
+        await db.Database.ExecuteSqlRawAsync(LedgerBackfill.Sql);
         await scope.ServiceProvider.GetRequiredService<UserStore>().EnsureDemoUserAsync();
     }
     catch (Exception ex)

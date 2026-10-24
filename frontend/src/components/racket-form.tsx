@@ -12,6 +12,7 @@ import { OptionGroup } from "@/components/ui/option-group";
 import { Textarea } from "@/components/ui/textarea";
 import type { RacketPayload, RacketServiceKind, RacketServicePayload } from "@/lib/api";
 import { dateInputError, formatInputDate, parseMoney, todayInputValue } from "@/lib/format";
+import { servicesToPayload } from "@/lib/racket-service";
 
 export type RacketFormValues = {
   name: string;
@@ -148,13 +149,7 @@ export function RacketForm({
           frameColor: values.frameColor,
           stringColor: values.stringColor,
           gripColor: values.gripColor,
-          services: services.map((service) => ({
-            id: service.id,
-            kind: service.kind,
-            changedAt: service.changedAt,
-            detail: service.detail,
-            tensionLb: service.tensionLb,
-          })),
+          services: servicesToPayload(services),
         }),
       )}
     >

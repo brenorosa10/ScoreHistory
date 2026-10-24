@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ScoreHistory.Api.Auth;
 using ScoreHistory.Api.Data;
 using ScoreHistory.Api.Models;
+using ScoreHistory.Api.Services;
 
 namespace ScoreHistory.Api.Controllers;
 
@@ -179,31 +180,39 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
-        var existingServices = await db.RacketServices
-            .Where(service => service.RacketId == id)
-            .ToListAsync(cancellationToken);
-        var keptIds = new HashSet<Guid>();
-        foreach (var service in services)
+        if (request.Services is not null)
         {
-            var current = existingServices.FirstOrDefault(item => item.Id == service.Id);
-            if (current is null)
+            var existingServices = await db.RacketServices
+                .Where(service => service.RacketId == id)
+                .ToListAsync(cancellationToken);
+            var plan = ServiceIdSync.Plan(
+                existingServices.Select(service => service.Id),
+                services.Select(service => (Guid?)service.Id));
+
+            foreach (var service in services)
             {
-                service.RacketId = id;
-                db.RacketServices.Add(service);
-                continue;
+                var current = existingServices.FirstOrDefault(item => item.Id == service.Id);
+                if (current is null)
+                {
+                    service.RacketId = id;
+                    db.RacketServices.Add(service);
+                    continue;
+                }
+
+                current.Kind = service.Kind;
+                current.ChangedAt = service.ChangedAt;
+                current.Detail = service.Detail;
+                current.TensionLb = service.TensionLb;
             }
 
-            current.Kind = service.Kind;
-            current.ChangedAt = service.ChangedAt;
-            current.Detail = service.Detail;
-            current.TensionLb = service.TensionLb;
-            keptIds.Add(current.Id);
-        }
-
-        var removed = existingServices.Where(service => !keptIds.Contains(service.Id)).ToList();
-        if (removed.Count > 0)
-        {
-            db.RacketServices.RemoveRange(removed);
+            if (plan.RemovedIds.Count > 0)
+            {
+                var linkedExpenses = await db.Expenses
+                    .Where(expense => expense.RacketServiceId != null && plan.RemovedIds.Contains(expense.RacketServiceId.Value))
+                    .ToListAsync(cancellationToken);
+                db.Expenses.RemoveRange(linkedExpenses);
+                db.RacketServices.RemoveRange(existingServices.Where(service => plan.RemovedIds.Contains(service.Id)));
+            }
         }
 
         await db.Rackets
@@ -302,6 +311,10 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
             return NotFound(new { message = "Raquete não encontrada." });
         }
 
+        var linkedExpenses = await db.Expenses
+            .Where(expense => expense.RacketServiceId == serviceId)
+            .ToListAsync(cancellationToken);
+        db.Expenses.RemoveRange(linkedExpenses);
         db.RacketServices.Remove(service);
         await db.SaveChangesAsync(cancellationToken);
         return NoContent();
