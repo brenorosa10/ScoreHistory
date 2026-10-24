@@ -7,6 +7,7 @@ import {
   getDashboardSummary,
   getDashboardTips,
   getFinance,
+  listExpenses,
   getMatch,
   getOpponent,
   getRacket,
@@ -27,6 +28,7 @@ export const matchesQueryKey = ["matches"] as const;
 export const dashboardQueryKey = ["dashboard"] as const;
 export const racketsQueryKey = ["rackets"] as const;
 export const financeQueryKey = ["finance"] as const;
+export const expensesQueryKey = ["expenses"] as const;
 
 export const meQueryOptions = () =>
   queryOptions({
@@ -124,4 +126,10 @@ export const financeQueryOptions = () =>
   queryOptions({
     queryKey: financeQueryKey,
     queryFn: getFinance,
+  });
+
+export const expensesQueryOptions = () =>
+  queryOptions({
+    queryKey: expensesQueryKey,
+    queryFn: listExpenses,
   });

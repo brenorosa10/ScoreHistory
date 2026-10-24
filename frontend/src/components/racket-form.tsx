@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useScrollToFieldError } from "@/hooks/use-scroll-to-field-error";
 import { RacketPreview, DEFAULT_FRAME_COLOR, DEFAULT_GRIP_COLOR, DEFAULT_STRING_COLOR } from "@/components/racket-preview";
 import { RacketServiceHistory } from "@/components/racket-service-history";
+import { MoneyInput } from "@/components/money-input";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -148,6 +149,7 @@ export function RacketForm({
           stringColor: values.stringColor,
           gripColor: values.gripColor,
           services: services.map((service) => ({
+            id: service.id,
             kind: service.kind,
             changedAt: service.changedAt,
             detail: service.detail,
@@ -213,16 +215,12 @@ export function RacketForm({
             hint="R$"
             error={errors.purchasePrice?.message}
           >
-            <Input
+            <MoneyInput
               id="racket-price"
-              inputMode="decimal"
-              className="bg-background tabular-nums"
-              placeholder="Ex.: 1200"
-              aria-invalid={errors.purchasePrice ? true : undefined}
-              {...register("purchasePrice", {
-                validate: (value) =>
-                  !value.trim() || parseMoney(value) != null || "Informe um valor válido.",
-              })}
+              className="bg-background"
+              value={watch("purchasePrice")}
+              invalid={Boolean(errors.purchasePrice)}
+              onChange={(value) => setValue("purchasePrice", value, { shouldValidate: true })}
             />
           </Field>
         </div>

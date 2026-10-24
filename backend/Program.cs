@@ -228,6 +228,40 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
             );
             CREATE INDEX IF NOT EXISTS "IX_ball_cans_UserId" ON ball_cans ("UserId");
 
+            CREATE TABLE IF NOT EXISTS ball_openings (
+                "Id" uuid NOT NULL,
+                "UserId" uuid NOT NULL,
+                "BallCanId" uuid NOT NULL,
+                "OpenedAt" timestamp with time zone NOT NULL,
+                CONSTRAINT "PK_ball_openings" PRIMARY KEY ("Id"),
+                CONSTRAINT "FK_ball_openings_users_UserId" FOREIGN KEY ("UserId") REFERENCES users ("Id") ON DELETE CASCADE,
+                CONSTRAINT "FK_ball_openings_ball_cans_BallCanId" FOREIGN KEY ("BallCanId") REFERENCES ball_cans ("Id") ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS "IX_ball_openings_UserId" ON ball_openings ("UserId");
+            CREATE INDEX IF NOT EXISTS "IX_ball_openings_BallCanId" ON ball_openings ("BallCanId");
+
+            CREATE TABLE IF NOT EXISTS expenses (
+                "Id" uuid NOT NULL,
+                "UserId" uuid NOT NULL,
+                "OccurredAt" timestamp with time zone NOT NULL,
+                "Category" character varying(32) NOT NULL,
+                "Amount" numeric(10,2) NOT NULL,
+                "RacketId" uuid,
+                "BallCanId" uuid,
+                "RacketServiceId" uuid,
+                "BallOpeningId" uuid,
+                "Note" character varying(256),
+                CONSTRAINT "PK_expenses" PRIMARY KEY ("Id"),
+                CONSTRAINT "FK_expenses_users_UserId" FOREIGN KEY ("UserId") REFERENCES users ("Id") ON DELETE CASCADE,
+                CONSTRAINT "FK_expenses_rackets_RacketId" FOREIGN KEY ("RacketId") REFERENCES rackets ("Id") ON DELETE SET NULL,
+                CONSTRAINT "FK_expenses_ball_cans_BallCanId" FOREIGN KEY ("BallCanId") REFERENCES ball_cans ("Id") ON DELETE SET NULL,
+                CONSTRAINT "FK_expenses_racket_services_RacketServiceId" FOREIGN KEY ("RacketServiceId") REFERENCES racket_services ("Id") ON DELETE SET NULL,
+                CONSTRAINT "FK_expenses_ball_openings_BallOpeningId" FOREIGN KEY ("BallOpeningId") REFERENCES ball_openings ("Id") ON DELETE SET NULL
+            );
+            CREATE INDEX IF NOT EXISTS "IX_expenses_UserId" ON expenses ("UserId");
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_expenses_RacketServiceId" ON expenses ("RacketServiceId") WHERE "RacketServiceId" IS NOT NULL;
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_expenses_BallOpeningId" ON expenses ("BallOpeningId") WHERE "BallOpeningId" IS NOT NULL;
+
             INSERT INTO ball_cans ("Id", "UserId", "Name", "CanPrice", "LastOpenedAt", "SortOrder")
             SELECT gen_random_uuid(), finance."UserId", finance."BallName", finance."BallCanPrice", finance."LastBallCanOpenedAt", 0
             FROM user_finance finance
@@ -235,6 +269,60 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
               AND NOT EXISTS (
                   SELECT 1 FROM ball_cans existing WHERE existing."UserId" = finance."UserId"
               );
+
+            INSERT INTO ball_openings ("Id", "UserId", "BallCanId", "OpenedAt")
+            SELECT gen_random_uuid(), ball."UserId", ball."Id", ball."LastOpenedAt"
+            FROM ball_cans ball
+            WHERE ball."LastOpenedAt" IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM ball_openings opening WHERE opening."BallCanId" = ball."Id"
+              );
+
+            INSERT INTO expenses (
+                "Id", "UserId", "OccurredAt", "Category", "Amount", "RacketId", "RacketServiceId", "Note")
+            SELECT
+                gen_random_uuid(),
+                racket."UserId",
+                service."ChangedAt",
+                CASE service."Kind"
+                    WHEN 'Corda' THEN 'Corda'
+                    WHEN 'Overgrip' THEN 'Overgrip'
+                    WHEN 'Grip' THEN 'Grip'
+                    ELSE 'Outro'
+                END,
+                CASE service."Kind"
+                    WHEN 'Corda' THEN COALESCE(finance."StringPrice", 0)
+                    WHEN 'Overgrip' THEN COALESCE(finance."OvergripPrice", 0)
+                    WHEN 'Grip' THEN COALESCE(finance."CushionGripPrice", 0)
+                    ELSE 0
+                END,
+                racket."Id",
+                service."Id",
+                service."Detail"
+            FROM racket_services service
+            JOIN rackets racket ON racket."Id" = service."RacketId"
+            LEFT JOIN user_finance finance ON finance."UserId" = racket."UserId"
+            WHERE NOT EXISTS (
+                SELECT 1 FROM expenses existing WHERE existing."RacketServiceId" = service."Id"
+            );
+
+            INSERT INTO expenses (
+                "Id", "UserId", "OccurredAt", "Category", "Amount", "BallCanId", "BallOpeningId", "Note")
+            SELECT
+                gen_random_uuid(),
+                opening."UserId",
+                opening."OpenedAt",
+                'Bolinhas',
+                COALESCE(ball."CanPrice", finance."BallCanPrice", 0),
+                ball."Id",
+                opening."Id",
+                ball."Name"
+            FROM ball_openings opening
+            JOIN ball_cans ball ON ball."Id" = opening."BallCanId"
+            LEFT JOIN user_finance finance ON finance."UserId" = opening."UserId"
+            WHERE NOT EXISTS (
+                SELECT 1 FROM expenses existing WHERE existing."BallOpeningId" = opening."Id"
+            );
             """);
         await scope.ServiceProvider.GetRequiredService<UserStore>().EnsureDemoUserAsync();
     }

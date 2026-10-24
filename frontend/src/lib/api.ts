@@ -445,6 +445,59 @@ export type FinanceRecord = {
   lastBallCanOpenedAt: string | null;
   balls: FinanceBall[];
   rackets: FinanceRacketPrice[];
+  openings?: BallOpeningRecord[];
+};
+
+export type BallOpeningRecord = {
+  id: string;
+  ballCanId: string;
+  openedAt: string;
+};
+
+export type ExpenseCategoryName =
+  | "Aula"
+  | "Clube"
+  | "Corda"
+  | "Overgrip"
+  | "Grip"
+  | "Bolinhas"
+  | "Raquete"
+  | "Torneio"
+  | "Outro";
+
+export type ExpenseRecord = {
+  id: string;
+  occurredAt: string;
+  category: ExpenseCategoryName;
+  amount: number;
+  racketId: string | null;
+  ballCanId: string | null;
+  racketServiceId: string | null;
+  ballOpeningId: string | null;
+  note: string | null;
+};
+
+export type ExpensePayload = {
+  occurredAt: string;
+  category: ExpenseCategoryName;
+  amount: number;
+  racketId?: string | null;
+  ballCanId?: string | null;
+  note?: string | null;
+};
+
+export type ReplacementKind = "Overgrip" | "Bolinhas" | "Corda" | "Grip" | "Outro";
+
+export type ReplacementPayload = {
+  kind: ReplacementKind;
+  occurredAt: string;
+  amount: number;
+  racketId?: string | null;
+  ballCanId?: string | null;
+  tensionLb?: number | null;
+  detail?: string | null;
+  note?: string | null;
+  category?: ExpenseCategoryName | null;
 };
 
 export type FinancePayload = {
@@ -463,7 +516,12 @@ export type FinancePayload = {
 export async function getFinance(): Promise<FinanceRecord> {
   const response = await fetch(`${API_URL}/api/finance`, { headers: authHeaders() });
   const finance = await parseJson<FinanceRecord>(response, "Não foi possível carregar o financeiro.");
-  return { ...finance, balls: finance.balls ?? [], rackets: finance.rackets ?? [] };
+  return {
+    ...finance,
+    balls: finance.balls ?? [],
+    rackets: finance.rackets ?? [],
+    openings: finance.openings ?? [],
+  };
 }
 
 export async function updateFinance(payload: FinancePayload): Promise<FinanceRecord> {
@@ -473,5 +531,66 @@ export async function updateFinance(payload: FinancePayload): Promise<FinanceRec
     body: JSON.stringify(payload),
   });
   const finance = await parseJson<FinanceRecord>(response, "Não foi possível salvar o financeiro.");
-  return { ...finance, balls: finance.balls ?? [], rackets: finance.rackets ?? [] };
+  return {
+    ...finance,
+    balls: finance.balls ?? [],
+    rackets: finance.rackets ?? [],
+    openings: finance.openings ?? [],
+  };
+}
+
+export async function listExpenses(): Promise<ExpenseRecord[]> {
+  const response = await fetch(`${API_URL}/api/finance/expenses`, { headers: authHeaders() });
+  return parseJson(response, "Não foi possível carregar os gastos.");
+}
+
+export async function createExpense(payload: ExpensePayload): Promise<ExpenseRecord> {
+  const response = await fetch(`${API_URL}/api/finance/expenses`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseJson(response, "Não foi possível lançar o gasto.");
+}
+
+export async function updateExpense(id: string, payload: ExpensePayload): Promise<ExpenseRecord> {
+  const response = await fetch(`${API_URL}/api/finance/expenses/${id}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseJson(response, "Não foi possível salvar o gasto.");
+}
+
+export async function deleteExpense(id: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/finance/expenses/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!response.ok) {
+    throw new ApiError(await readError(response, "Não foi possível excluir o gasto."), response.status);
+  }
+}
+
+export async function createReplacement(payload: ReplacementPayload): Promise<ExpenseRecord> {
+  const response = await fetch(`${API_URL}/api/finance/replacements`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseJson(response, "Não foi possível registrar a troca.");
+}
+
+export async function launchFees(payload: {
+  year: number;
+  month: number;
+  lessonAmount?: number | null;
+  clubAmount?: number | null;
+}): Promise<ExpenseRecord[]> {
+  const response = await fetch(`${API_URL}/api/finance/fees`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseJson(response, "Não foi possível lançar as mensalidades.");
 }

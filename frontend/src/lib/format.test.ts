@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { dateInputError, normalizeOpponentName, parseMoney, toInitials } from "@/lib/format";
+import {
+  dateInputError,
+  maskMoneyTyping,
+  moneyToInput,
+  normalizeOpponentName,
+  parseMoney,
+  toInitials,
+} from "@/lib/format";
 
 describe("grapheme initials", () => {
   it("does not split an emoji into a lone surrogate", () => {
@@ -30,6 +37,27 @@ describe("money parsing", () => {
     expect(parseMoney("")).toBeNull();
     expect(parseMoney("-10")).toBeNull();
     expect(parseMoney("abc")).toBeNull();
+  });
+
+  it("keeps 25,00 as exactly 25.00", () => {
+    expect(parseMoney("25,00")).toBe(25);
+    expect(parseMoney("25,01")).toBe(25.01);
+    expect(parseMoney("0,10")).toBe(0.1);
+    expect(moneyToInput(25)).toBe("25,00");
+    expect(moneyToInput(parseMoney("25,00"))).toBe("25,00");
+  });
+});
+
+describe("money mask", () => {
+  it("treats typed digits as cents and accepts both thousand formats", () => {
+    expect(maskMoneyTyping("25,00")).toBe("25,00");
+    expect(maskMoneyTyping("2500")).toBe("25,00");
+    expect(maskMoneyTyping("1.200,50")).toBe("1.200,50");
+    expect(maskMoneyTyping("1200,50")).toBe("1.200,50");
+    expect(maskMoneyTyping("")).toBe("");
+    expect(parseMoney(maskMoneyTyping("25,00"))).toBe(25);
+    expect(parseMoney(maskMoneyTyping("1.200,50"))).toBe(1200.5);
+    expect(parseMoney(maskMoneyTyping("1200,50"))).toBe(1200.5);
   });
 });
 
