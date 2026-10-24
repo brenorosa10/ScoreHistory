@@ -217,6 +217,13 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
             ALTER TABLE matches ALTER COLUMN "Won" DROP NOT NULL;
             ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "PurchasePrice" numeric(10,2);
             ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "Sport" character varying(32) NOT NULL DEFAULT 'Tênis';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS "Sports" character varying(64) NOT NULL DEFAULT ',Tênis,';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS "SportsConfirmed" boolean NOT NULL DEFAULT true;
+            UPDATE users SET "Sports" = ',Tênis,' WHERE "Sports" IS NULL OR btrim("Sports") = '';
+            ALTER TABLE opponents ADD COLUMN IF NOT EXISTS "Sports" character varying(64) NOT NULL DEFAULT ',Tênis,';
+            ALTER TABLE matches ADD COLUMN IF NOT EXISTS "Sport" character varying(32) NOT NULL DEFAULT 'Tênis';
+            ALTER TABLE matches ADD COLUMN IF NOT EXISTS "PartnerName" character varying(120);
+            ALTER TABLE matches ADD COLUMN IF NOT EXISTS "SecondOpponentName" character varying(120);
 
             CREATE TABLE IF NOT EXISTS ball_cans (
                 "Id" uuid NOT NULL,

@@ -278,9 +278,9 @@ function Highlight({ label, value, hint }: { label: string; value: string; hint?
 
 function Row({ label, value, hint }: { label: string; value: number | null; hint?: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-3 py-2">
+    <div className="flex items-start justify-between gap-3 px-3 py-2">
       <div className="min-w-0">
-        <dt className="truncate text-sm">{label}</dt>
+        <dt className="text-sm break-words">{label}</dt>
         {hint ? <p className="text-[0.65rem] text-muted-foreground">{hint}</p> : null}
       </div>
       <dd className={cn("shrink-0 text-sm font-semibold tabular-nums", value == null && "text-muted-foreground")}>
@@ -308,7 +308,7 @@ export function SectionHeading({
       </span>
       <div className="min-w-0 flex-1">
         <h2 className="text-sm font-semibold">{title}</h2>
-        <p className="truncate text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs break-words text-muted-foreground">{description}</p>
       </div>
       {action}
     </div>

@@ -266,8 +266,8 @@ function toInputColor(value: string) {
 function Spec({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid min-w-0 gap-0.5 rounded-xl bg-muted/70 px-2 py-1.5 text-center">
-      <dt className="truncate text-[0.65rem] text-muted-foreground">{label}</dt>
-      <dd className="truncate text-xs font-semibold tabular-nums">{value}</dd>
+      <dt className="text-[0.65rem] break-words text-muted-foreground">{label}</dt>
+      <dd className="text-xs font-semibold break-words tabular-nums">{value}</dd>
     </div>
   );
 }

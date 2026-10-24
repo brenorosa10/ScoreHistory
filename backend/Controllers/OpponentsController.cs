@@ -5,6 +5,7 @@ using ScoreHistory.Api.Auth;
 using ScoreHistory.Api.Data;
 using ScoreHistory.Api.Models;
 using ScoreHistory.Api.Paging;
+using ScoreHistory.Api.Services;
 
 namespace ScoreHistory.Api.Controllers;
 
@@ -27,13 +28,16 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
         "50B"
     ];
 
+    public sealed record SportStat(string Sport, int Played, int Wins, int Losses, int Draws);
+
     public sealed record OpponentRequest(
         string Name,
         string Handedness,
         string? Class,
         string? Strengths,
         string? Weaknesses,
-        string? Notes);
+        string? Notes,
+        IReadOnlyList<string>? Sports);
 
     public sealed record OpponentResponse(
         Guid Id,
@@ -46,13 +50,16 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
         int Played,
         int Wins,
         int Losses,
-        int Draws);
+        int Draws,
+        IReadOnlyList<string> Sports,
+        IReadOnlyList<SportStat> SportStats);
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<OpponentResponse>>> List(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = PageQuery.DefaultPageSize,
         [FromQuery] string? search = null,
+        [FromQuery] string? sport = null,
         CancellationToken cancellationToken = default)
     {
         var userId = CurrentUser.GetId(User);
@@ -65,18 +72,31 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
         var (resolvedPage, resolvedPageSize) = PageQuery.Normalize(page, pageSize);
         var query = db.Opponents.Where(opponent => opponent.UserId == userIdValue);
 
+        var sportFilter = Sports.Normalize(sport);
+        if (!string.IsNullOrWhiteSpace(sport) && sportFilter is null)
+        {
+            return BadRequest(new { message = "Esporte inválido." });
+        }
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim().ToLower();
             query = query.Where(opponent => opponent.Name.ToLower().Contains(term));
         }
 
+        if (sportFilter is not null)
+        {
+            var token = "," + sportFilter + ",";
+            query = query.Where(opponent => opponent.Sports.Contains(token));
+        }
+
         query = query.OrderBy(opponent => opponent.Name);
         var totalCount = await query.CountAsync(cancellationToken);
-        var opponents = await query
+        var rows = await query
             .Skip((resolvedPage - 1) * resolvedPageSize)
             .Take(resolvedPageSize)
-            .Select(opponent => new OpponentResponse(
+            .Select(opponent => new
+            {
                 opponent.Id,
                 opponent.Name,
                 opponent.Handedness,
@@ -84,11 +104,27 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
                 opponent.Strengths,
                 opponent.Weaknesses,
                 opponent.Notes,
-                db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue),
-                db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == true),
-                db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == false),
-                db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == null)))
+                opponent.Sports,
+                Played = db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && (sportFilter == null || match.Sport == sportFilter)),
+                Wins = db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == true && (sportFilter == null || match.Sport == sportFilter)),
+                Losses = db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == false && (sportFilter == null || match.Sport == sportFilter)),
+                Draws = db.Matches.Count(match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == null && (sportFilter == null || match.Sport == sportFilter))
+            })
             .ToListAsync(cancellationToken);
+        var opponents = rows.Select(opponent => new OpponentResponse(
+            opponent.Id,
+            opponent.Name,
+            opponent.Handedness,
+            opponent.Class,
+            opponent.Strengths,
+            opponent.Weaknesses,
+            opponent.Notes,
+            opponent.Played,
+            opponent.Wins,
+            opponent.Losses,
+            opponent.Draws,
+            Sports.Parse(opponent.Sports),
+            [])).ToList();
 
         return Ok(new PagedResult<OpponentResponse>(opponents, resolvedPage, resolvedPageSize, totalCount));
     }
@@ -124,7 +160,8 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
             match => match.OpponentId == opponent.Id && match.UserId == userIdValue && match.Won == null,
             cancellationToken);
 
-        return Ok(ToResponse(opponent, played, wins, losses, draws));
+        var stats = await SportStatsAsync(userIdValue, opponent.Id, cancellationToken);
+        return Ok(ToResponse(opponent, played, wins, losses, draws, stats));
     }
 
     [HttpGet("lookup")]
@@ -185,6 +222,12 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
             return BadRequest(new { message = "Informe a classe do adversário." });
         }
 
+        var sports = await ResolveSportsAsync(userId.Value, request.Sports, cancellationToken);
+        if (sports.Error is not null)
+        {
+            return BadRequest(new { message = sports.Error });
+        }
+
         var opponent = new Opponent
         {
             UserId = userId.Value,
@@ -193,7 +236,8 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
             Class = request.Class!.Trim(),
             Strengths = TrimToNull(request.Strengths),
             Weaknesses = TrimToNull(request.Weaknesses),
-            Notes = TrimToNull(request.Notes)
+            Notes = TrimToNull(request.Notes),
+            Sports = sports.Stored!
         };
 
         db.Opponents.Add(opponent);
@@ -242,9 +286,68 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
         opponent.Strengths = TrimToNull(request.Strengths);
         opponent.Weaknesses = TrimToNull(request.Weaknesses);
         opponent.Notes = TrimToNull(request.Notes);
+        var sports = ResolveExplicitSports(request.Sports);
+        if (sports.Error is not null)
+        {
+            return BadRequest(new { message = sports.Error });
+        }
+
+        if (sports.Stored is not null)
+        {
+            opponent.Sports = sports.Stored;
+        }
 
         await db.SaveChangesAsync(cancellationToken);
         return Ok(ToResponse(opponent));
+    }
+
+    private async Task<(string? Stored, string? Error)> ResolveSportsAsync(
+        Guid userId,
+        IReadOnlyList<string>? requested,
+        CancellationToken cancellationToken)
+    {
+        if (requested is null)
+        {
+            var user = await db.Users.FirstOrDefaultAsync(item => item.Id == userId, cancellationToken);
+            var fallback = user is null ? [Sports.Tennis] : Sports.Parse(user.Sports);
+            return (Sports.Format(fallback), null);
+        }
+
+        return ResolveExplicitSports(requested);
+    }
+
+    private static (string? Stored, string? Error) ResolveExplicitSports(IReadOnlyList<string>? requested)
+    {
+        if (requested is null)
+        {
+            return (null, null);
+        }
+
+        var sports = Sports.Parse(requested);
+        if (sports.Count == 0 || sports.Count != requested.Count)
+        {
+            return (null, sports.Count == 0 ? "Escolha pelo menos um esporte." : "Esporte inválido.");
+        }
+
+        return (Sports.Format(sports), null);
+    }
+
+    private async Task<IReadOnlyList<SportStat>> SportStatsAsync(
+        Guid userId,
+        Guid opponentId,
+        CancellationToken cancellationToken)
+    {
+        var matches = await db.Matches
+            .Where(match => match.UserId == userId && match.OpponentId == opponentId)
+            .GroupBy(match => match.Sport)
+            .Select(group => new SportStat(
+                group.Key,
+                group.Count(),
+                group.Count(match => match.Won == true),
+                group.Count(match => match.Won == false),
+                group.Count(match => match.Won == null)))
+            .ToListAsync(cancellationToken);
+        return matches;
     }
 
     private static OpponentResponse ToResponse(
@@ -252,8 +355,22 @@ public sealed class OpponentsController(AppDbContext db) : ControllerBase
         int played = 0,
         int wins = 0,
         int losses = 0,
-        int draws = 0) =>
-        new(opponent.Id, opponent.Name, opponent.Handedness, opponent.Class, opponent.Strengths, opponent.Weaknesses, opponent.Notes, played, wins, losses, draws);
+        int draws = 0,
+        IReadOnlyList<SportStat>? sportStats = null) =>
+        new(
+            opponent.Id,
+            opponent.Name,
+            opponent.Handedness,
+            opponent.Class,
+            opponent.Strengths,
+            opponent.Weaknesses,
+            opponent.Notes,
+            played,
+            wins,
+            losses,
+            draws,
+            Sports.Parse(opponent.Sports),
+            sportStats ?? []);
 
     private static string NormalizeName(string? name)
     {

@@ -6,15 +6,16 @@ import { cn } from "@/lib/utils";
 export function AppLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const onNewMatch = pathname.startsWith("/partidas/nova");
+  const onboarding = pathname === "/esportes";
 
   return (
     <ExpenseSheetProvider>
     <div className="mx-auto min-h-svh w-full max-w-md min-w-0 overflow-x-hidden bg-background shadow-sm sm:my-6 sm:min-h-[calc(100svh-3rem)] sm:rounded-3xl sm:border">
-      <div className="pb-28">
+      <div className={onboarding ? "" : "pb-28"}>
         <Outlet />
       </div>
 
-      <nav
+      {onboarding ? null : <nav
         aria-label="Navegação principal"
         className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md border-t bg-background/90 backdrop-blur-md sm:rounded-b-3xl sm:border-x"
       >
@@ -57,7 +58,7 @@ export function AppLayout() {
             active={pathname.startsWith("/perfil")}
           />
         </div>
-      </nav>
+      </nav>}
     </div>
     </ExpenseSheetProvider>
   );

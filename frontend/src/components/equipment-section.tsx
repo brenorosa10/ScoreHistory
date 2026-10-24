@@ -378,7 +378,7 @@ function RacketCard({
   ];
 
   return (
-    <article className="grid min-w-0 gap-3 overflow-hidden rounded-xl border p-3">
+    <article className="grid min-w-0 gap-3 rounded-xl border p-3">
       <div className="flex min-w-0 items-center gap-3">
         <RacketGlyph
           sport={racket.sport}
@@ -413,32 +413,34 @@ function RacketCard({
             <li key={spec.kind}>
               <button
                 type="button"
-                className="flex min-w-0 w-full items-center gap-2.5 rounded-lg bg-muted/60 px-2.5 py-2 text-left active:bg-accent"
+                className="grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-2.5 rounded-lg bg-muted/60 px-2.5 py-2 text-left active:bg-accent"
                 onClick={() => openSheet({ kind: spec.kind, racketId: racket.id })}
               >
-              <span className={cn("grid size-7 shrink-0 place-items-center rounded-md", meta.bubble)}>
+              <span className={cn("mt-0.5 grid size-7 shrink-0 place-items-center rounded-md", meta.bubble)}>
                 <Icon className="size-3.5" />
               </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium">
-                  {meta.label}
-                  <span className="font-normal text-muted-foreground"> · {spec.value}</span>
-                  {spec.extra ? <span className="font-normal text-muted-foreground"> · {spec.extra}</span> : null}
-                </p>
-                <p className="truncate text-[0.7rem] text-muted-foreground">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p className="min-w-0 text-xs font-medium break-words">
+                    {meta.label}
+                    <span className="font-normal text-muted-foreground"> · {spec.value}</span>
+                    {spec.extra ? <span className="font-normal text-muted-foreground"> · {spec.extra}</span> : null}
+                  </p>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium",
+                      tone ? WEAR_TONE_CLASS[tone] : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {spec.since ? formatRelativeDays(spec.since) : "Troquei hoje"}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[0.7rem] break-words text-muted-foreground">
                   {spec.since ? `Última troca ${formatRelativeDays(spec.since)}` : "Sem troca"}
                   {spec.average ? ` · ${spec.average}` : ""}
                   {spec.price != null ? ` · ${formatMoney(spec.price)}` : ""}
                 </p>
               </div>
-              <span
-                className={cn(
-                  "shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium",
-                  tone ? WEAR_TONE_CLASS[tone] : "bg-muted text-muted-foreground",
-                )}
-              >
-                {spec.since ? formatRelativeDays(spec.since) : "Troquei hoje"}
-              </span>
               </button>
             </li>
           );
