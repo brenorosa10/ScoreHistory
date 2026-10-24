@@ -6,4 +6,6 @@ public sealed class User
     public required string Email { get; set; }
     public string? Name { get; set; }
     public required string PasswordHash { get; set; }
+    public string Sports { get; set; } = ",Tênis,";
+    public bool SportsConfirmed { get; set; }
 }

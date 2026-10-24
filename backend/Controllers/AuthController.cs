@@ -15,7 +15,7 @@ public sealed class AuthController(UserStore users, JwtTokenService tokens) : Co
 
     public sealed record AuthResponse(string AccessToken, string TokenType, DateTime ExpiresAtUtc, string Email);
 
-    public sealed record MeResponse(string Id, string Email, string? Name);
+    public sealed record MeResponse(string Id, string Email, string? Name, IReadOnlyList<string> Sports, bool SportsConfirmed);
 
     [HttpPost("login")]
     [AllowAnonymous]
@@ -48,7 +48,7 @@ public sealed class AuthController(UserStore users, JwtTokenService tokens) : Co
             return Unauthorized();
         }
 
-        return Ok(new MeResponse(user.Id.ToString(), user.Email, user.Name));
+        return Ok(new MeResponse(user.Id.ToString(), user.Email, user.Name, Sports.Parse(user.Sports), user.SportsConfirmed));
     }
 
     private AuthResponse IssueToken(User user)

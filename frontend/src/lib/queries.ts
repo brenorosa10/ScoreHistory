@@ -85,10 +85,10 @@ export const matchQueryOptions = (id: string) =>
     queryFn: () => getMatch(id),
   });
 
-export const dashboardSummaryQueryOptions = () =>
+export const dashboardSummaryQueryOptions = (sport?: string) =>
   queryOptions({
-    queryKey: [...dashboardQueryKey, "summary"] as const,
-    queryFn: getDashboardSummary,
+    queryKey: [...dashboardQueryKey, "summary", sport ?? "all"] as const,
+    queryFn: () => getDashboardSummary(sport),
   });
 
 export const dashboardHeadToHeadQueryOptions = () =>
@@ -97,10 +97,10 @@ export const dashboardHeadToHeadQueryOptions = () =>
     queryFn: getDashboardHeadToHead,
   });
 
-export const dashboardHeadToHeadByOpponentQueryOptions = (opponentId: string) =>
+export const dashboardHeadToHeadByOpponentQueryOptions = (opponentId: string, sport?: string) =>
   queryOptions({
-    queryKey: [...dashboardQueryKey, "head-to-head", opponentId] as const,
-    queryFn: () => getDashboardHeadToHeadByOpponent(opponentId),
+    queryKey: [...dashboardQueryKey, "head-to-head", opponentId, sport ?? "all"] as const,
+    queryFn: () => getDashboardHeadToHeadByOpponent(opponentId, sport),
     enabled: Boolean(opponentId),
   });
 

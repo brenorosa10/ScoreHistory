@@ -8,7 +8,9 @@ import { ResourceMissing } from "@/components/resource-missing";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isNotFoundError } from "@/lib/api";
+import { SportBadge } from "@/components/sport-badge";
 import { formatFullDate, opponentMeta } from "@/lib/format";
+import { courtApplies, isDoublesSport } from "@/lib/player-sports";
 import { resultBannerClass, resultLabel } from "@/lib/match-result";
 import { drawCount } from "@/lib/record";
 import { dashboardHeadToHeadByOpponentQueryOptions, matchQueryOptions } from "@/lib/queries";
@@ -17,7 +19,9 @@ import { cn } from "@/lib/utils";
 export function MatchDetailPage() {
   const { matchId } = useParams({ from: "/app/partidas/$matchId" });
   const { data: match, isPending, isError, error } = useQuery(matchQueryOptions(matchId));
-  const { data: h2h, isPending: h2hPending } = useQuery(dashboardHeadToHeadByOpponentQueryOptions(match?.opponentId ?? ""));
+  const { data: h2h, isPending: h2hPending } = useQuery(
+    dashboardHeadToHeadByOpponentQueryOptions(match?.opponentId ?? "", match?.sport),
+  );
   const [opponentOpen, setOpponentOpen] = useState(false);
 
   if (isPending) {
@@ -98,14 +102,23 @@ export function MatchDetailPage() {
             {resultLabel(match.won)}
           </p>
           <p className="text-4xl leading-none font-bold tabular-nums">{match.score}</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {match.sport ? <SportBadge sport={match.sport} className="bg-white/20 text-inherit" /> : null}
+            {courtApplies(match.sport) && match.courtType ? (
             <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", match.won == null ? "bg-black/10" : "bg-white/20")}>
               {match.courtType}
             </span>
+            ) : null}
             <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", match.won == null ? "bg-black/10" : "bg-white/20")}>
               {opponentMeta(match.opponentHandedness, match.opponentClass)}
             </span>
           </div>
+          {isDoublesSport(match.sport) && (match.partnerName || match.secondOpponentName) ? (
+            <p className="text-sm">
+              {match.partnerName ? `Dupla: ${match.partnerName}` : "Dupla não informada"}
+              {match.secondOpponentName ? ` · Adversários: ${match.opponentName} e ${match.secondOpponentName}` : ""}
+            </p>
+          ) : null}
         </section>
 
         <section className="rounded-2xl border bg-card p-0 shadow-xs">
@@ -125,7 +138,7 @@ export function MatchDetailPage() {
                 <div>
                   <h2 className="font-semibold">Head to head</h2>
                   <p className="text-xs text-muted-foreground">
-                    {played} {played === 1 ? "jogo" : "jogos"} contra {match.opponentName}
+                    {played} {played === 1 ? "jogo" : "jogos"} de {match.sport ?? "Tênis"} contra {match.opponentName}
                     {draws > 0 ? ` · ${draws === 1 ? "1 empate" : `${draws} empates`}` : ""}
                   </p>
                 </div>
@@ -138,6 +151,16 @@ export function MatchDetailPage() {
                   <ChevronRight className="size-4 text-muted-foreground" />
                 </div>
               </div>
+              {h2h?.bySport && h2h.bySport.length > 1 ? (
+                <div className="mt-3 grid gap-1 text-xs text-muted-foreground">
+                  {h2h.bySport.map((item) => (
+                    <p key={item.sport} className="flex justify-between gap-3">
+                      <span>{item.sport}</span>
+                      <span className="tabular-nums">{item.wins}-{item.losses}</span>
+                    </p>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-destructive/20">
                 <div className="h-full rounded-full bg-success" style={{ width: `${share}%` }} />
               </div>

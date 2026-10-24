@@ -12,12 +12,16 @@ export type MeResponse = {
   id: string;
   email: string;
   name: string | null;
+  sports: string[];
+  sportsConfirmed: boolean;
 };
 
 export type UserResponse = {
   id: string;
   email: string;
   name: string | null;
+  sports?: string[];
+  sportsConfirmed?: boolean;
 };
 
 export class ApiError extends Error {
@@ -107,6 +111,16 @@ export type Opponent = {
   wins?: number;
   losses?: number;
   draws?: number;
+  sports?: string[];
+  sportStats?: SportStat[];
+};
+
+export type SportStat = {
+  sport: string;
+  played: number;
+  wins: number;
+  losses: number;
+  draws: number;
 };
 
 export type OpponentPayload = {
@@ -116,6 +130,7 @@ export type OpponentPayload = {
   strengths?: string;
   weaknesses?: string;
   notes?: string;
+  sports?: string[];
 };
 
 export type MatchRecord = {
@@ -133,6 +148,10 @@ export type MatchRecord = {
   weaknesses: string | null;
   opponentStrengths: string | null;
   opponentWeaknesses: string | null;
+  sport?: string;
+  partnerName?: string | null;
+  secondOpponentName?: string | null;
+  opponentSports?: string[];
 };
 
 export type MatchPayload = {
@@ -146,6 +165,9 @@ export type MatchPayload = {
   weaknesses?: string;
   opponentStrengths?: string;
   opponentWeaknesses?: string;
+  sport?: string;
+  partnerName?: string;
+  secondOpponentName?: string;
 };
 
 export const DEFAULT_PAGE_SIZE = 10;
@@ -162,6 +184,7 @@ export type ListOpponentsParams = {
   page?: number;
   pageSize?: number;
   search?: string;
+  sport?: string;
 };
 
 export type MatchFilter = "all" | "wins" | "losses" | "draws";
@@ -171,6 +194,7 @@ export type ListMatchesParams = {
   pageSize?: number;
   filter?: MatchFilter;
   opponentId?: string;
+  sport?: string;
 };
 
 export type DashboardSummary = {
@@ -189,7 +213,18 @@ export type DashboardSummary = {
     courtType: string;
     score: string;
     won: boolean | null;
+    sport?: string;
   } | null;
+  bySport?: SportSummary[];
+};
+
+export type SportSummary = {
+  sport: string;
+  matches: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
 };
 
 export type HeadToHead = {
@@ -200,6 +235,8 @@ export type HeadToHead = {
   losses: number;
   draws?: number;
   lastScore: string;
+  sport?: string;
+  bySport?: SportStat[];
 };
 
 export type RacketServiceKind = "Corda" | "Overgrip" | "Grip" | "Outro";
@@ -283,6 +320,7 @@ export async function listOpponents(params: ListOpponentsParams = {}): Promise<P
       page: params.page ?? 1,
       pageSize: params.pageSize ?? DEFAULT_PAGE_SIZE,
       search: params.search?.trim() || undefined,
+      sport: params.sport,
     })}`,
     { headers: authHeaders() },
   );
@@ -333,15 +371,27 @@ export async function listMatches(params: ListMatchesParams = {}): Promise<Paged
       pageSize: params.pageSize ?? DEFAULT_PAGE_SIZE,
       filter: params.filter && params.filter !== "all" ? params.filter : undefined,
       opponentId: params.opponentId,
+      sport: params.sport,
     })}`,
     { headers: authHeaders() },
   );
   return parseJson(response, "Não foi possível carregar as partidas.");
 }
 
-export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const response = await fetch(`${API_URL}/api/dashboard/summary`, { headers: authHeaders() });
+export async function getDashboardSummary(sport?: string): Promise<DashboardSummary> {
+  const response = await fetch(`${API_URL}/api/dashboard/summary${toQuery({ sport })}`, {
+    headers: authHeaders(),
+  });
   return parseJson(response, "Não foi possível carregar o resumo.");
+}
+
+export async function updateMySports(sports: string[]): Promise<UserResponse> {
+  const response = await fetch(`${API_URL}/api/users/me/sports`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify({ sports }),
+  });
+  return parseJson(response, "Não foi possível salvar os esportes.");
 }
 
 export async function getDashboardHeadToHead(): Promise<HeadToHead[]> {
@@ -349,10 +399,14 @@ export async function getDashboardHeadToHead(): Promise<HeadToHead[]> {
   return parseJson(response, "Não foi possível carregar o head to head.");
 }
 
-export async function getDashboardHeadToHeadByOpponent(opponentId: string): Promise<HeadToHead> {
-  const response = await fetch(`${API_URL}/api/dashboard/head-to-head/${opponentId}`, {
-    headers: authHeaders(),
-  });
+export async function getDashboardHeadToHeadByOpponent(
+  opponentId: string,
+  sport?: string,
+): Promise<HeadToHead> {
+  const response = await fetch(
+    `${API_URL}/api/dashboard/head-to-head/${opponentId}${toQuery({ sport })}`,
+    { headers: authHeaders() },
+  );
   return parseJson(response, "Não foi possível carregar o confronto.");
 }
 

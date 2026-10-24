@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { SwipeableMatchRow } from "@/components/swipeable-match-row";
+import { SportFilter } from "@/components/sport-filter";
 import { WinRateRing } from "@/components/win-rate-ring";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,10 +16,12 @@ import type { MatchRecord } from "@/lib/api";
 import { DEFAULT_PAGE_SIZE } from "@/lib/api";
 import { formatMonth } from "@/lib/format";
 import { drawCount, recordSummary, WIN_RATE_HINT, winRatePercent } from "@/lib/record";
+import { sportsOrTennis } from "@/lib/player-sports";
 import {
   dashboardSummaryQueryOptions,
   dashboardTipsQueryOptions,
   matchesQueryOptions,
+  meQueryOptions,
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -36,13 +39,16 @@ export function HistoryPage() {
   const search = useSearch({ from: "/app/historico" });
   const page = search.page ?? 1;
   const filtro: Filter = search.filtro ?? "all";
-  const { data: summary, isPending: summaryPending } = useQuery(dashboardSummaryQueryOptions());
+  const esporte = search.esporte;
+  const { data: user } = useQuery(meQueryOptions());
+  const { data: summary, isPending: summaryPending } = useQuery(dashboardSummaryQueryOptions(esporte));
   const { data: tips = [], isPending: tipsPending } = useQuery(dashboardTipsQueryOptions());
   const { data: matchesPage, isPending: matchesPending, isFetching: matchesFetching } = useQuery(
     matchesQueryOptions({
       page,
       pageSize: DEFAULT_PAGE_SIZE,
       filter: filtro,
+      sport: esporte,
     }),
   );
 
@@ -57,18 +63,18 @@ export function HistoryPage() {
     const totalPages = matchesPage?.totalPages ?? 0;
     if (totalPages > 0 && page > totalPages) {
       void navigate({
-        search: { page: totalPages, filtro: filtro === "all" ? undefined : filtro },
+        search: { page: totalPages, filtro: filtro === "all" ? undefined : filtro, esporte },
         replace: true,
       });
     }
-  }, [filtro, matchesPage, navigate, page]);
+  }, [esporte, filtro, matchesPage, navigate, page]);
 
   function setFilter(next: Filter) {
-    void navigate({ search: { page: 1, filtro: next === "all" ? undefined : next } });
+    void navigate({ search: { page: 1, filtro: next === "all" ? undefined : next, esporte } });
   }
 
   function goToPage(nextPage: number) {
-    void navigate({ search: { page: nextPage, filtro: filtro === "all" ? undefined : filtro } });
+    void navigate({ search: { page: nextPage, filtro: filtro === "all" ? undefined : filtro, esporte } });
   }
 
   return (
@@ -145,6 +151,16 @@ export function HistoryPage() {
                 </div>
               </section>
             ) : null}
+
+            <SportFilter
+              sports={sportsOrTennis(user?.sports)}
+              value={esporte}
+              onChange={(next) => {
+                void navigate({
+                  search: { page: 1, filtro: filtro === "all" ? undefined : filtro, esporte: next },
+                });
+              }}
+            />
 
             <section className="grid gap-3">
               <div className="flex items-center justify-between gap-3">

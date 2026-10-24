@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ScoreHistory.Api.Auth;
 using ScoreHistory.Api.Data;
 using ScoreHistory.Api.Models;
+using ScoreHistory.Api.Services;
 
 namespace ScoreHistory.Api.Controllers;
 
@@ -18,7 +19,10 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
         DateTime PlayedAt,
         string CourtType,
         string Score,
-        bool? Won);
+        bool? Won,
+        string Sport);
+
+    public sealed record SportSummary(string Sport, int Matches, int Wins, int Losses, int Draws, int WinRate);
 
     public sealed record DashboardSummaryResponse(
         int Matches,
@@ -29,7 +33,10 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
         int Opponents,
         int? StreakCount,
         bool? StreakWon,
-        LatestMatchResponse? LatestMatch);
+        LatestMatchResponse? LatestMatch,
+        IReadOnlyList<SportSummary> BySport);
+
+    public sealed record SportHeadToHead(string Sport, int Played, int Wins, int Losses, int Draws);
 
     public sealed record HeadToHeadResponse(
         Guid OpponentId,
@@ -38,12 +45,16 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
         int Wins,
         int Losses,
         int Draws,
-        string LastScore);
+        string LastScore,
+        string Sport,
+        IReadOnlyList<SportHeadToHead> BySport);
 
     public sealed record DashboardTipsResponse(IReadOnlyList<string> Tips);
 
     [HttpGet("summary")]
-    public async Task<ActionResult<DashboardSummaryResponse>> Summary(CancellationToken cancellationToken)
+    public async Task<ActionResult<DashboardSummaryResponse>> Summary(
+        [FromQuery] string? sport = null,
+        CancellationToken cancellationToken = default)
     {
         var userId = CurrentUser.GetId(User);
         if (userId is null)
@@ -51,11 +62,20 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             return Unauthorized();
         }
 
-        var matches = await db.Matches
+        var sportFilter = Sports.Normalize(sport);
+        if (!string.IsNullOrWhiteSpace(sport) && sportFilter is null)
+        {
+            return BadRequest(new { message = "Esporte inválido." });
+        }
+
+        var allMatches = await db.Matches
             .Include(match => match.Opponent)
             .Where(match => match.UserId == userId)
             .OrderByDescending(match => match.PlayedAt)
             .ToListAsync(cancellationToken);
+        var matches = sportFilter is null
+            ? allMatches
+            : allMatches.Where(match => match.Sport == sportFilter).ToList();
 
         var opponents = await db.Opponents.CountAsync(opponent => opponent.UserId == userId, cancellationToken);
         var wins = matches.Count(match => match.Won == true);
@@ -75,12 +95,14 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             opponents,
             streak?.Count,
             streak?.Won,
-            latest));
+            latest,
+            BuildSportSummaries(allMatches)));
     }
 
     [HttpGet("head-to-head")]
     public async Task<ActionResult<IReadOnlyList<HeadToHeadResponse>>> HeadToHead(
-        CancellationToken cancellationToken)
+        [FromQuery] string? sport = null,
+        CancellationToken cancellationToken = default)
     {
         var userId = CurrentUser.GetId(User);
         if (userId is null)
@@ -88,14 +110,26 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             return Unauthorized();
         }
 
+        var sportFilter = Sports.Normalize(sport);
+        if (!string.IsNullOrWhiteSpace(sport) && sportFilter is null)
+        {
+            return BadRequest(new { message = "Esporte inválido." });
+        }
+
         var matches = await LoadMatchesAsync(userId.Value, cancellationToken);
+        if (sportFilter is not null)
+        {
+            matches = matches.Where(match => match.Sport == sportFilter).ToList();
+        }
+
         return Ok(BuildHeadToHead(matches));
     }
 
     [HttpGet("head-to-head/{opponentId:guid}")]
     public async Task<ActionResult<HeadToHeadResponse>> HeadToHeadByOpponent(
         Guid opponentId,
-        CancellationToken cancellationToken)
+        [FromQuery] string? sport = null,
+        CancellationToken cancellationToken = default)
     {
         var userId = CurrentUser.GetId(User);
         if (userId is null)
@@ -119,21 +153,45 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
                 return NotFound(new { message = "Adversário não encontrado." });
             }
 
-            return Ok(new HeadToHeadResponse(opponent.Id, opponent.Name, 0, 0, 0, 0, string.Empty));
+            return Ok(new HeadToHeadResponse(opponent.Id, opponent.Name, 0, 0, 0, 0, string.Empty, Sports.Tennis, []));
         }
 
-        var first = matches[0];
-        var wins = matches.Count(match => match.Won == true);
-        var losses = matches.Count(match => match.Won == false);
-        var draws = matches.Count(match => match.Won == null);
+        var sportFilter = Sports.Normalize(sport);
+        if (!string.IsNullOrWhiteSpace(sport) && sportFilter is null)
+        {
+            return BadRequest(new { message = "Esporte inválido." });
+        }
+
+        var bySport = BuildSportHeadToHead(matches);
+        var scoped = sportFilter is null ? matches : matches.Where(match => match.Sport == sportFilter).ToList();
+        if (scoped.Count == 0)
+        {
+            return Ok(new HeadToHeadResponse(
+                opponentId,
+                matches[0].Opponent?.Name ?? "Adversário",
+                0,
+                0,
+                0,
+                0,
+                string.Empty,
+                sportFilter ?? Sports.Tennis,
+                bySport));
+        }
+
+        var first = scoped[0];
+        var wins = scoped.Count(match => match.Won == true);
+        var losses = scoped.Count(match => match.Won == false);
+        var draws = scoped.Count(match => match.Won == null);
         return Ok(new HeadToHeadResponse(
             first.OpponentId,
             first.Opponent?.Name ?? "Adversário",
-            matches.Count,
+            scoped.Count,
             wins,
             losses,
             draws,
-            first.Score));
+            first.Score,
+            sportFilter ?? first.Sport,
+            bySport));
     }
 
     [HttpGet("tips")]
@@ -163,7 +221,8 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
             match.PlayedAt,
             match.CourtType,
             match.Score,
-            match.Won);
+            match.Won,
+            string.IsNullOrWhiteSpace(match.Sport) ? Sports.Tennis : match.Sport);
 
     private static (bool Won, int Count)? BuildStreak(IReadOnlyList<Match> matches)
     {
@@ -190,11 +249,13 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
 
     private static IReadOnlyList<HeadToHeadResponse> BuildHeadToHead(IReadOnlyList<Match> matches)
     {
-        var map = new Dictionary<Guid, HeadToHeadResponse>();
+        var map = new Dictionary<string, HeadToHeadResponse>();
 
         foreach (var match in matches)
         {
-            if (!map.TryGetValue(match.OpponentId, out var current))
+            var sport = string.IsNullOrWhiteSpace(match.Sport) ? Sports.Tennis : match.Sport;
+            var key = match.OpponentId + ":" + sport;
+            if (!map.TryGetValue(key, out var current))
             {
                 current = new HeadToHeadResponse(
                     match.OpponentId,
@@ -203,10 +264,12 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
                     0,
                     0,
                     0,
-                    match.Score);
+                    match.Score,
+                    sport,
+                    []);
             }
 
-            map[match.OpponentId] = current with
+            map[key] = current with
             {
                 Played = current.Played + 1,
                 Wins = current.Wins + (match.Won == true ? 1 : 0),
@@ -217,6 +280,35 @@ public sealed class DashboardController(AppDbContext db) : ControllerBase
 
         return map.Values.OrderByDescending(item => item.Played).ToList();
     }
+
+    private static IReadOnlyList<SportSummary> BuildSportSummaries(IReadOnlyList<Match> matches)
+    {
+        return matches
+            .GroupBy(match => string.IsNullOrWhiteSpace(match.Sport) ? Sports.Tennis : match.Sport)
+            .Select(group =>
+            {
+                var wins = group.Count(match => match.Won == true);
+                var losses = group.Count(match => match.Won == false);
+                var draws = group.Count(match => match.Won == null);
+                var decided = wins + losses;
+                var winRate = decided == 0 ? 0 : (int)Math.Round(wins * 100d / decided, MidpointRounding.AwayFromZero);
+                return new SportSummary(group.Key, group.Count(), wins, losses, draws, winRate);
+            })
+            .OrderBy(item => item.Sport)
+            .ToList();
+    }
+
+    private static IReadOnlyList<SportHeadToHead> BuildSportHeadToHead(IReadOnlyList<Match> matches) =>
+        matches
+            .GroupBy(match => string.IsNullOrWhiteSpace(match.Sport) ? Sports.Tennis : match.Sport)
+            .Select(group => new SportHeadToHead(
+                group.Key,
+                group.Count(),
+                group.Count(match => match.Won == true),
+                group.Count(match => match.Won == false),
+                group.Count(match => match.Won == null)))
+            .OrderBy(item => item.Sport)
+            .ToList();
 
     private static IReadOnlyList<string> BuildTips(IReadOnlyList<Match> matches)
     {

@@ -1,4 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { LogOut } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
@@ -6,9 +7,11 @@ import { EquipmentSection } from "@/components/equipment-section";
 import { FinanceSection } from "@/components/finance-section";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { InstallAppButton } from "@/components/install-app-button";
+import { SportMultiSelect } from "@/components/sport-multi-select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { clearToken } from "@/lib/api";
+import { clearToken, updateMySports } from "@/lib/api";
+import { sportsOrTennis, type PlayerSport } from "@/lib/player-sports";
 import { toInitials } from "@/lib/format";
 import { drawCount, WIN_RATE_HINT, winRatePercent } from "@/lib/record";
 import {
@@ -21,6 +24,22 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: user, isPending: userPending } = useQuery(meQueryOptions());
+  const [sports, setSports] = useState<PlayerSport[] | null>(null);
+  const selectedSports = sports ?? sportsOrTennis(user?.sports);
+  const sportsMutation = useMutation({
+    mutationFn: () => updateMySports(selectedSports),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(meQueryKey, {
+        id: updated.id,
+        email: updated.email,
+        name: updated.name ?? user?.name ?? null,
+        sports: updated.sports ?? selectedSports,
+        sportsConfirmed: true,
+      });
+      setSports(null);
+      await queryClient.invalidateQueries({ queryKey: meQueryKey });
+    },
+  });
   const { data: summary, isPending: summaryPending } = useQuery(dashboardSummaryQueryOptions());
   const isPending = userPending || summaryPending;
 
@@ -87,6 +106,36 @@ export function ProfilePage() {
             </div>
           </section>
         )}
+
+        <section className="grid gap-3 rounded-2xl border bg-card p-4 shadow-xs">
+          <div>
+            <h2 className="text-sm font-semibold">Esportes que eu jogo</h2>
+            <p className="text-xs text-muted-foreground">Escolha pelo menos um. Partidas e adversários usam essa lista.</p>
+          </div>
+          <SportMultiSelect
+            value={selectedSports}
+            onChange={(next) => {
+              setSports(next);
+            }}
+          />
+          {sportsMutation.isError ? (
+            <p role="alert" className="text-sm font-medium text-destructive">
+              {sportsMutation.error instanceof Error ? sportsMutation.error.message : "Não foi possível salvar."}
+            </p>
+          ) : null}
+          <Button
+            type="button"
+            disabled={selectedSports.length === 0 || sportsMutation.isPending}
+            onClick={() => {
+              if (selectedSports.length === 0) {
+                return;
+              }
+              sportsMutation.mutate();
+            }}
+          >
+            {sportsMutation.isPending ? "Salvando..." : "Salvar esportes"}
+          </Button>
+        </section>
 
         <EquipmentSection />
 

@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { ChevronRight, Flame, History, Plus, Swords, Trophy, Users } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { EquipmentStatus } from "@/components/equipment-status";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SportBadge } from "@/components/sport-badge";
+import { SportFilter } from "@/components/sport-filter";
 import { formatShortDate } from "@/lib/format";
+import { courtApplies, sportsOrTennis } from "@/lib/player-sports";
 import { resultBadgeClass, resultLabel, resultLetter, resultStripeClass } from "@/lib/match-result";
 import { drawCount, recordSummary, WIN_RATE_HINT, winRatePercent } from "@/lib/record";
 import { dashboardSummaryQueryOptions, meQueryOptions } from "@/lib/queries";
@@ -13,7 +17,8 @@ import { cn } from "@/lib/utils";
 
 export function HomePage() {
   const { data: user } = useQuery(meQueryOptions());
-  const { data: summary, isPending } = useQuery(dashboardSummaryQueryOptions());
+  const [sport, setSport] = useState<string | undefined>();
+  const { data: summary, isPending } = useQuery(dashboardSummaryQueryOptions(sport));
   const latest = summary?.latestMatch;
   const firstName = user?.name?.trim().split(/\s+/)[0] || "jogador";
   const matches = summary?.matches ?? 0;
@@ -36,6 +41,7 @@ export function HomePage() {
       </header>
 
       <main className="grid gap-6 px-4 pt-3">
+        <SportFilter sports={sportsOrTennis(user?.sports)} value={sport} onChange={setSport} />
         {isPending ? (
           <HomeLoading />
         ) : (
@@ -79,6 +85,16 @@ export function HomePage() {
                 <HeroStat label="Vitórias" value={wins} />
                 <HeroStat label="Adversários" value={summary?.opponents ?? 0} />
               </div>
+            {summary?.bySport && summary.bySport.length > 1 && !sport ? (
+                <div className="relative mt-4 grid gap-1 text-xs">
+                  {summary.bySport.map((item) => (
+                    <p key={item.sport} className="flex justify-between gap-3 opacity-90">
+                      <span>{item.sport}</span>
+                      <span className="tabular-nums">{item.winRate}% · {item.wins}-{item.losses}</span>
+                    </p>
+                  ))}
+                </div>
+              ) : null}
             </section>
 
             <section className="grid grid-cols-3 gap-2">
@@ -111,6 +127,7 @@ export function HomePage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate font-medium">{latest.opponentName}</p>
+                      {latest.sport ? <SportBadge sport={latest.sport} className="bg-white/20 text-inherit" /> : null}
                       <span
                         className={cn(
                           "shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold",
@@ -121,7 +138,8 @@ export function HomePage() {
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {formatShortDate(latest.playedAt)} · {latest.courtType}
+                      {formatShortDate(latest.playedAt)}
+                      {courtApplies(latest.sport) && latest.courtType ? ` · ${latest.courtType}` : ""}
                     </p>
                     <p className="mt-1.5 text-sm font-semibold tabular-nums">{latest.score}</p>
                   </div>
