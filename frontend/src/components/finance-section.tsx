@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { useForm, type UseFormRegisterReturn } from "react-hook-form";
-import { Check, ChevronDown, Pencil, Wallet } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Controller, useForm } from "react-hook-form";
+import { Check, ChevronDown, ChevronRight, Pencil, Wallet } from "lucide-react";
 import { useState } from "react";
+import { useExpenseSheet } from "@/components/expense-sheet";
+import { MoneyInput } from "@/components/money-input";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUpdateFinance } from "@/hooks/use-update-finance";
 import type { FinanceRecord } from "@/lib/api";
@@ -13,13 +15,11 @@ import {
   financeToForm,
   formToFinancePayload,
   moneyFieldRule,
-  monthlyFinanceBreakdown,
-  monthlyFinanceHint,
-  isSameCalendarMonth,
   type FinanceFormValues,
 } from "@/lib/finance";
 import { formatMoney } from "@/lib/format";
-import { financeQueryOptions, racketsQueryOptions } from "@/lib/queries";
+import { categoryTotals, monthKey } from "@/lib/ledger";
+import { expensesQueryOptions, financeQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 type FinanceEditorProps = {
@@ -29,7 +29,7 @@ type FinanceEditorProps = {
 
 export function FinanceEditor({ finance, onDone }: FinanceEditorProps) {
   const {
-    register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<FinanceFormValues>({
@@ -47,21 +47,11 @@ export function FinanceEditor({ finance, onDone }: FinanceEditorProps) {
     >
       <fieldset className="grid gap-3">
         <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Mensalidades
+          Valores padrão das mensalidades
         </legend>
         <div className="grid grid-cols-2 gap-2">
-          <MoneyField
-            id="fin-lesson"
-            label="Aula"
-            error={errors.lessonPrice?.message}
-            register={register("lessonPrice", { validate: moneyFieldRule })}
-          />
-          <MoneyField
-            id="fin-club"
-            label="Clube"
-            error={errors.clubPrice?.message}
-            register={register("clubPrice", { validate: moneyFieldRule })}
-          />
+          <MoneyField id="fin-lesson" label="Aula" name="lessonPrice" control={control} error={errors.lessonPrice?.message} />
+          <MoneyField id="fin-club" label="Clube" name="clubPrice" control={control} error={errors.clubPrice?.message} />
         </div>
       </fieldset>
 
@@ -70,24 +60,9 @@ export function FinanceEditor({ finance, onDone }: FinanceEditorProps) {
           Consumíveis
         </legend>
         <div className="grid grid-cols-3 gap-2">
-          <MoneyField
-            id="fin-string"
-            label="Corda"
-            error={errors.stringPrice?.message}
-            register={register("stringPrice", { validate: moneyFieldRule })}
-          />
-          <MoneyField
-            id="fin-overgrip"
-            label="Overgrip"
-            error={errors.overgripPrice?.message}
-            register={register("overgripPrice", { validate: moneyFieldRule })}
-          />
-          <MoneyField
-            id="fin-grip"
-            label="Grip"
-            error={errors.cushionGripPrice?.message}
-            register={register("cushionGripPrice", { validate: moneyFieldRule })}
-          />
+          <MoneyField id="fin-string" label="Corda" name="stringPrice" control={control} error={errors.stringPrice?.message} />
+          <MoneyField id="fin-overgrip" label="Overgrip" name="overgripPrice" control={control} error={errors.overgripPrice?.message} />
+          <MoneyField id="fin-grip" label="Grip" name="cushionGripPrice" control={control} error={errors.cushionGripPrice?.message} />
         </div>
       </fieldset>
 
@@ -105,8 +80,9 @@ export function FinanceEditor({ finance, onDone }: FinanceEditorProps) {
               key={racket.id}
               id={`fin-racket-${racket.id}`}
               label={racket.name}
+              name={`racketPrices.${racket.id}`}
+              control={control}
               error={errors.racketPrices?.[racket.id]?.message}
-              register={register(`racketPrices.${racket.id}`, { validate: moneyFieldRule })}
             />
           ))
         )}
@@ -135,23 +111,25 @@ export function FinanceEditor({ finance, onDone }: FinanceEditorProps) {
 function MoneyField({
   id,
   label,
+  name,
+  control,
   error,
-  register,
 }: {
   id: string;
   label: string;
+  name: "lessonPrice" | "clubPrice" | "stringPrice" | "overgripPrice" | "cushionGripPrice" | `racketPrices.${string}`;
+  control: ReturnType<typeof useForm<FinanceFormValues>>["control"];
   error?: string;
-  register: UseFormRegisterReturn;
 }) {
   return (
     <Field label={label} htmlFor={id} hint="R$" error={error}>
-      <Input
-        id={id}
-        inputMode="decimal"
-        className="tabular-nums"
-        placeholder="0,00"
-        aria-invalid={error ? true : undefined}
-        {...register}
+      <Controller
+        name={name}
+        control={control}
+        rules={{ validate: moneyFieldRule }}
+        render={({ field }) => (
+          <MoneyInput id={id} value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} invalid={Boolean(error)} />
+        )}
       />
     </Field>
   );
@@ -159,11 +137,12 @@ function MoneyField({
 
 export function FinanceSection() {
   const { data: finance, isPending, isError } = useQuery(financeQueryOptions());
-  const { data: rackets = [] } = useQuery(racketsQueryOptions());
+  const { data: expenses = [] } = useQuery(expensesQueryOptions());
+  const { openSheet } = useExpenseSheet();
   const [editing, setEditing] = useState(false);
 
   const racketsTotal = finance?.rackets.reduce((sum, r) => sum + (r.purchasePrice ?? 0), 0) ?? 0;
-  const month = finance ? monthlyFinanceBreakdown(finance, rackets) : null;
+  const monthTotal = categoryTotals(expenses, monthKey()).total;
   const balls = finance?.balls ?? [];
   const hasAnyValue =
     finance &&
@@ -184,12 +163,12 @@ export function FinanceSection() {
         title="Financeiro"
         description="Quanto você investe no jogo."
         action={
-          finance && !editing ? (
-            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-              <Pencil />
-              Editar
-            </Button>
-          ) : null
+          <Button asChild size="sm" variant="outline">
+            <Link to="/financeiro">
+              Abrir
+              <ChevronRight />
+            </Link>
+          </Button>
         }
       />
 
@@ -220,12 +199,17 @@ export function FinanceSection() {
       ) : (
         <div className="grid gap-3">
           <div className="grid grid-cols-2 gap-2">
-            <Highlight
-              label="Neste mês"
-              value={formatMoney(month?.total ?? 0)}
-              hint={month ? monthlyFinanceHint(month) : undefined}
-            />
+            <Highlight label="Neste mês" value={formatMoney(monthTotal)} hint="pelo livro de gastos" />
             <Highlight label="Em raquetes" value={formatMoney(racketsTotal)} hint={`${finance.rackets.length} cadastrada${finance.rackets.length === 1 ? "" : "s"}`} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button size="sm" onClick={() => openSheet()}>
+              Registrar gasto
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              <Pencil />
+              Valores padrão
+            </Button>
           </div>
 
           <dl className="divide-y rounded-xl border">
@@ -236,24 +220,11 @@ export function FinanceSection() {
                 key={ball.id}
                 label={ball.name?.trim() || (balls.length > 1 ? `Lata ${index + 1}` : "Lata de bolinhas")}
                 value={ball.canPrice}
-                hint={isSameCalendarMonth(ball.lastOpenedAt) ? "aberta neste mês" : undefined}
               />
             ))}
-            <Row
-              label="Corda"
-              value={finance.stringPrice}
-              hint={swapHint(month?.stringCount ?? 0, "troca", "trocas")}
-            />
-            <Row
-              label="Overgrip"
-              value={finance.overgripPrice}
-              hint={swapHint(month?.overgripCount ?? 0, "troca", "trocas")}
-            />
-            <Row
-              label="Grip"
-              value={finance.cushionGripPrice}
-              hint={swapHint(month?.gripCount ?? 0, "troca", "trocas")}
-            />
+            <Row label="Corda" value={finance.stringPrice} hint="valor padrão" />
+            <Row label="Overgrip" value={finance.overgripPrice} hint="valor padrão" />
+            <Row label="Grip" value={finance.cushionGripPrice} hint="valor padrão" />
           </dl>
 
           {finance.rackets.length > 0 ? (
@@ -287,13 +258,6 @@ function RacketPrices({ rackets }: { rackets: FinanceRecord["rackets"] }) {
       ) : null}
     </div>
   );
-}
-
-function swapHint(count: number, singular: string, plural: string) {
-  if (count <= 0) {
-    return undefined;
-  }
-  return count === 1 ? `1 ${singular} neste mês` : `${count} ${plural} neste mês`;
 }
 
 function Highlight({ label, value, hint }: { label: string; value: string; hint?: string }) {

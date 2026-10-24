@@ -1,5 +1,6 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { History, Home, Plus, Swords, UserRound } from "lucide-react";
+import { ExpenseSheetProvider } from "@/components/expense-sheet";
 import { cn } from "@/lib/utils";
 
 export function AppLayout() {
@@ -7,6 +8,7 @@ export function AppLayout() {
   const onNewMatch = pathname.startsWith("/partidas/nova");
 
   return (
+    <ExpenseSheetProvider>
     <div className="mx-auto min-h-svh w-full max-w-md min-w-0 overflow-x-hidden bg-background shadow-sm sm:my-6 sm:min-h-[calc(100svh-3rem)] sm:rounded-3xl sm:border">
       <div className="pb-28">
         <Outlet />
@@ -57,6 +59,7 @@ export function AppLayout() {
         </div>
       </nav>
     </div>
+    </ExpenseSheetProvider>
   );
 }
 

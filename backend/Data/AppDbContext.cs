@@ -12,6 +12,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<RacketService> RacketServices => Set<RacketService>();
     public DbSet<UserFinance> UserFinances => Set<UserFinance>();
     public DbSet<BallCan> BallCans => Set<BallCan>();
+    public DbSet<BallOpening> BallOpenings => Set<BallOpening>();
+    public DbSet<Expense> Expenses => Set<Expense>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,6 +107,54 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .WithMany()
                 .HasForeignKey(ball => ball.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BallOpening>(entity =>
+        {
+            entity.ToTable("ball_openings");
+            entity.HasKey(opening => opening.Id);
+            entity.HasIndex(opening => opening.UserId);
+            entity.HasIndex(opening => opening.BallCanId);
+            entity.HasOne<BallCan>()
+                .WithMany()
+                .HasForeignKey(opening => opening.BallCanId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(opening => opening.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Expense>(entity =>
+        {
+            entity.ToTable("expenses");
+            entity.HasKey(expense => expense.Id);
+            entity.HasIndex(expense => expense.UserId);
+            entity.HasIndex(expense => expense.RacketServiceId).IsUnique();
+            entity.HasIndex(expense => expense.BallOpeningId).IsUnique();
+            entity.Property(expense => expense.Category).HasMaxLength(32).IsRequired();
+            entity.Property(expense => expense.Amount).HasPrecision(10, 2);
+            entity.Property(expense => expense.Note).HasMaxLength(256);
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(expense => expense.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Racket>()
+                .WithMany()
+                .HasForeignKey(expense => expense.RacketId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<BallCan>()
+                .WithMany()
+                .HasForeignKey(expense => expense.BallCanId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<RacketService>()
+                .WithMany()
+                .HasForeignKey(expense => expense.RacketServiceId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<BallOpening>()
+                .WithMany()
+                .HasForeignKey(expense => expense.BallOpeningId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

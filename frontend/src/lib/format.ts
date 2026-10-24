@@ -77,11 +77,48 @@ export function formatMoney(value: number | null | undefined): string {
   return moneyFormatter.format(value);
 }
 
-export function moneyToInput(value: number | null | undefined): string {
-  if (value == null) {
+export function formatCents(cents: number): string {
+  const abs = Math.abs(Math.trunc(cents));
+  const whole = Math.floor(abs / 100);
+  const frac = abs % 100;
+  const grouped = String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${grouped},${String(frac).padStart(2, "0")}`;
+}
+
+/** Digits are cents, so typing 2500 or pasting 25,00 both become 25,00. */
+export function maskMoneyTyping(raw: string): string {
+  const digits = raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 12);
+  if (!digits) {
     return "";
   }
-  return String(value).replace(".", ",");
+  return formatCents(Number(digits));
+}
+
+export function moneyToInput(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) {
+    return "";
+  }
+  return formatCents(Math.round(value * 100));
+}
+
+function centsFromDecimal(normalized: string): number | null {
+  if (!/^\d+(\.\d+)?$/.test(normalized)) {
+    return null;
+  }
+
+  const [whole, fraction = ""] = normalized.split(".");
+  if (whole.length > 10) {
+    return null;
+  }
+
+  const wholeNumber = Number(whole);
+  if (!Number.isSafeInteger(wholeNumber)) {
+    return null;
+  }
+
+  const padded = `${fraction}000`.slice(0, 3);
+  const cents = wholeNumber * 100 + Number(padded.slice(0, 2)) + (padded[2] >= "5" ? 1 : 0);
+  return cents;
 }
 
 export function parseMoney(value: string): number | null {
@@ -100,7 +137,7 @@ export function parseMoney(value: string): number | null {
         ? trimmed.replace(/\./g, "").replace(",", ".")
         : trimmed.replace(/,/g, "");
   } else if (lastComma >= 0) {
-    normalized = trimmed.replace(",", ".");
+    normalized = trimmed.replace(/\./g, "").replace(",", ".");
   } else if (lastDot >= 0) {
     const groups = trimmed.split(".");
     const fraction = groups.at(-1) ?? "";
@@ -109,8 +146,8 @@ export function parseMoney(value: string): number | null {
     normalized = trimmed;
   }
 
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed * 100) / 100 : null;
+  const cents = centsFromDecimal(normalized);
+  return cents == null ? null : cents / 100;
 }
 
 export function formatInputDate(value: string): string | null {

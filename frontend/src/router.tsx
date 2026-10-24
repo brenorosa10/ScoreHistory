@@ -19,6 +19,7 @@ import { NewMatchPage } from "@/pages/new-match-page";
 import { NewOpponentPage } from "@/pages/new-opponent-page";
 import { OpponentDetailPage } from "@/pages/opponent-detail-page";
 import { OpponentsPage } from "@/pages/opponents-page";
+import { FinancePage } from "@/pages/finance-page";
 import { ProfilePage } from "@/pages/profile-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { RegisterPage } from "@/pages/register-page";
@@ -81,6 +82,12 @@ const historyRoute = createRoute({
     return next;
   },
   component: HistoryPage,
+});
+
+const financeRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/financeiro",
+  component: FinancePage,
 });
 
 const profileRoute = createRoute({
@@ -190,6 +197,7 @@ const routeTree = rootRoute.addChildren([
   appRoute.addChildren([
     indexRoute,
     historyRoute,
+    financeRoute,
     profileRoute,
     newRacketRoute,
     editRacketRoute,

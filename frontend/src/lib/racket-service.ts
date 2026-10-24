@@ -1,5 +1,5 @@
 import { Grip, Hand, Waves, Wrench, type LucideIcon } from "lucide-react";
-import type { RacketServiceKind } from "@/lib/api";
+import type { RacketServiceKind, RacketServicePayload } from "@/lib/api";
 
 type ServiceKindMeta = {
   icon: LucideIcon;
@@ -15,3 +15,13 @@ export const SERVICE_KIND_META: Record<RacketServiceKind, ServiceKindMeta> = {
 };
 
 export const SERVICE_KIND_ORDER: RacketServiceKind[] = ["Corda", "Overgrip", "Grip", "Outro"];
+
+export function servicesToPayload(services: RacketServicePayload[]): RacketServicePayload[] {
+  return services.map((service) => ({
+    id: service.id,
+    kind: service.kind,
+    changedAt: service.changedAt,
+    detail: service.detail,
+    tensionLb: service.tensionLb,
+  }));
+}

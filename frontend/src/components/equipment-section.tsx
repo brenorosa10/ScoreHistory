@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Backpack, Pencil, Plus, Trash2 } from "lucide-react";
+import { useExpenseSheet } from "@/components/expense-sheet";
+import { MoneyInput } from "@/components/money-input";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { BrandMark } from "@/components/brand-mark";
@@ -18,7 +20,7 @@ import {
   WEAR_TONE_CLASS,
   wearTone,
 } from "@/lib/equipment";
-import { ballsToPayload, financeToPayload, moneyFieldRule } from "@/lib/finance";
+import { ballsToPayload, financeToPayload } from "@/lib/finance";
 import {
   dateInputError,
   dateInputToIso,
@@ -30,6 +32,7 @@ import {
   toDateInputValue,
   todayInputValue,
 } from "@/lib/format";
+import { intervalLabel } from "@/lib/ledger";
 import { SERVICE_KIND_META } from "@/lib/racket-service";
 import { financeQueryOptions, racketsQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -155,19 +158,10 @@ function BallsSection() {
 
 function BallCard({ ball, finance }: { ball: FinanceBall; finance: FinanceRecord }) {
   const [editing, setEditing] = useState(false);
-  const mutation = useUpdateFinance();
+  const { openSheet } = useExpenseSheet();
   const tone = wearTone(ball.lastOpenedAt, BALL_WARN_DAYS);
-
-  function openToday() {
-    mutation.mutate({
-      ...financeToPayload(finance),
-      balls: ballsToPayload(
-        finance.balls.map((item) =>
-          item.id === ball.id ? { ...item, lastOpenedAt: new Date().toISOString() } : item,
-        ),
-      ),
-    });
-  }
+  const openings = (finance.openings ?? []).filter((opening) => opening.ballCanId === ball.id).map((opening) => opening.openedAt);
+  const average = intervalLabel(openings.length > 0 ? openings : [ball.lastOpenedAt]);
 
   if (editing) {
     return <BallEditor finance={finance} ball={ball} onDone={() => setEditing(false)} />;
@@ -188,8 +182,9 @@ function BallCard({ ball, finance }: { ball: FinanceBall; finance: FinanceRecord
           <p className="truncate font-medium">{ball.name?.trim() || "Bolinha"}</p>
           <p className="truncate text-xs text-muted-foreground">
             {ball.lastOpenedAt
-              ? `Lata aberta ${formatRelativeDays(ball.lastOpenedAt)}`
+              ? `Última troca ${formatRelativeDays(ball.lastOpenedAt)}`
               : "Nenhuma lata registrada"}
+            {average ? ` · ${average}` : ""}
             {ball.canPrice != null ? ` · ${formatMoney(ball.canPrice)}` : ""}
           </p>
         </div>
@@ -203,7 +198,7 @@ function BallCard({ ball, finance }: { ball: FinanceBall; finance: FinanceRecord
           <Pencil />
         </Button>
       </div>
-      <Button size="sm" variant="secondary" loading={mutation.isPending} onClick={openToday}>
+      <Button size="sm" variant="secondary" onClick={() => openSheet({ kind: "Bolinhas", ballCanId: ball.id })}>
         <Plus />
         Abri uma lata hoje
       </Button>
@@ -302,13 +297,11 @@ function BallEditor({
           />
         </Field>
         <Field label="Valor da lata" htmlFor={`ball-price-${ball?.id ?? "new"}`} hint="R$" error={errors.canPrice?.message}>
-          <Input
+          <MoneyInput
             id={`ball-price-${ball?.id ?? "new"}`}
-            inputMode="decimal"
-            className="tabular-nums"
-            placeholder="0,00"
-            aria-invalid={errors.canPrice ? true : undefined}
-            {...register("canPrice", { validate: moneyFieldRule })}
+            value={watch("canPrice")}
+            invalid={Boolean(errors.canPrice)}
+            onChange={(value) => setValue("canPrice", value, { shouldValidate: true })}
           />
         </Field>
       </div>
@@ -352,6 +345,7 @@ function RacketCard({
   racket: RacketRecord;
   finance: FinanceRecord | undefined;
 }) {
+  const { openSheet } = useExpenseSheet();
   const lastCorda = latestService(racket.services, ["Corda"]);
   const lastOvergrip = latestService(racket.services, ["Overgrip"]);
   const tensionLb = lastCorda?.tensionLb ?? racket.tensionLb;
@@ -364,6 +358,7 @@ function RacketCard({
       since: lastCorda?.changedAt,
       price: finance?.stringPrice,
       warn: STRING_WARN_DAYS,
+      average: intervalLabel(racket.services.filter((service) => service.kind === "Corda").map((service) => service.changedAt)),
     },
     {
       kind: "Overgrip" as const,
@@ -372,6 +367,7 @@ function RacketCard({
       since: lastOvergrip?.changedAt,
       price: finance?.overgripPrice,
       warn: OVERGRIP_WARN_DAYS,
+      average: intervalLabel(racket.services.filter((service) => service.kind === "Overgrip").map((service) => service.changedAt)),
     },
   ];
 
@@ -406,7 +402,12 @@ function RacketCard({
           const Icon = meta.icon;
           const tone = wearTone(spec.since, spec.warn);
           return (
-            <li key={spec.kind} className="flex min-w-0 items-center gap-2.5 rounded-lg bg-muted/60 px-2.5 py-2">
+            <li key={spec.kind}>
+              <button
+                type="button"
+                className="flex min-w-0 w-full items-center gap-2.5 rounded-lg bg-muted/60 px-2.5 py-2 text-left active:bg-accent"
+                onClick={() => openSheet({ kind: spec.kind, racketId: racket.id })}
+              >
               <span className={cn("grid size-7 shrink-0 place-items-center rounded-md", meta.bubble)}>
                 <Icon className="size-3.5" />
               </span>
@@ -417,7 +418,9 @@ function RacketCard({
                   {spec.extra ? <span className="font-normal text-muted-foreground"> · {spec.extra}</span> : null}
                 </p>
                 <p className="truncate text-[0.7rem] text-muted-foreground">
-                  {spec.price != null ? formatMoney(spec.price) : "sem valor"}
+                  {spec.since ? `Última troca ${formatRelativeDays(spec.since)}` : "Sem troca"}
+                  {spec.average ? ` · ${spec.average}` : ""}
+                  {spec.price != null ? ` · ${formatMoney(spec.price)}` : ""}
                 </p>
               </div>
               <span
@@ -426,8 +429,9 @@ function RacketCard({
                   tone ? WEAR_TONE_CLASS[tone] : "bg-muted text-muted-foreground",
                 )}
               >
-                {spec.since ? formatRelativeDays(spec.since) : "sem troca"}
+                {spec.since ? formatRelativeDays(spec.since) : "Troquei hoje"}
               </span>
+              </button>
             </li>
           );
         })}

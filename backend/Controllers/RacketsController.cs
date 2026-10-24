@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ScoreHistory.Api.Auth;
 using ScoreHistory.Api.Data;
 using ScoreHistory.Api.Models;
+using ScoreHistory.Api.Services;
 
 namespace ScoreHistory.Api.Controllers;
 
@@ -179,9 +180,40 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
-        await db.RacketServices
-            .Where(service => service.RacketId == id)
-            .ExecuteDeleteAsync(cancellationToken);
+        if (request.Services is not null)
+        {
+            var existingServices = await db.RacketServices
+                .Where(service => service.RacketId == id)
+                .ToListAsync(cancellationToken);
+            var plan = ServiceIdSync.Plan(
+                existingServices.Select(service => service.Id),
+                services.Select(service => (Guid?)service.Id));
+
+            foreach (var service in services)
+            {
+                var current = existingServices.FirstOrDefault(item => item.Id == service.Id);
+                if (current is null)
+                {
+                    service.RacketId = id;
+                    db.RacketServices.Add(service);
+                    continue;
+                }
+
+                current.Kind = service.Kind;
+                current.ChangedAt = service.ChangedAt;
+                current.Detail = service.Detail;
+                current.TensionLb = service.TensionLb;
+            }
+
+            if (plan.RemovedIds.Count > 0)
+            {
+                var linkedExpenses = await db.Expenses
+                    .Where(expense => expense.RacketServiceId != null && plan.RemovedIds.Contains(expense.RacketServiceId.Value))
+                    .ToListAsync(cancellationToken);
+                db.Expenses.RemoveRange(linkedExpenses);
+                db.RacketServices.RemoveRange(existingServices.Where(service => plan.RemovedIds.Contains(service.Id)));
+            }
+        }
 
         await db.Rackets
             .Where(racket => racket.Id == id && racket.UserId == userId)
@@ -198,17 +230,7 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
                     .SetProperty(racket => racket.GripColor, gripColor),
                 cancellationToken);
 
-        foreach (var service in services)
-        {
-            service.RacketId = id;
-            db.RacketServices.Add(service);
-        }
-
-        if (services.Count > 0)
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
-
+        await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         var racket = await FindOwnedAsync(id, userId.Value, cancellationToken);
@@ -231,6 +253,69 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
         }
 
         db.Rackets.Remove(racket);
+        await db.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/services")]
+    public async Task<ActionResult<RacketServiceResponse>> AddService(
+        Guid id,
+        [FromBody] RacketServiceRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = CurrentUser.GetId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        if (!TryMapServices([request], out var services, out var error))
+        {
+            return BadRequest(new { message = error });
+        }
+
+        var owned = await db.Rackets.AsNoTracking()
+            .AnyAsync(racket => racket.Id == id && racket.UserId == userId, cancellationToken);
+        if (!owned)
+        {
+            return NotFound(new { message = "Raquete não encontrada." });
+        }
+
+        var service = services[0];
+        service.RacketId = id;
+        db.RacketServices.Add(service);
+        await db.SaveChangesAsync(cancellationToken);
+        return Ok(new RacketServiceResponse(service.Id, service.Kind, service.ChangedAt, service.Detail, service.TensionLb));
+    }
+
+    [HttpDelete("{id:guid}/services/{serviceId:guid}")]
+    public async Task<IActionResult> DeleteService(Guid id, Guid serviceId, CancellationToken cancellationToken)
+    {
+        var userId = CurrentUser.GetId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var service = await db.RacketServices
+            .FirstOrDefaultAsync(item => item.Id == serviceId && item.RacketId == id, cancellationToken);
+        if (service is null)
+        {
+            return NotFound(new { message = "Troca não encontrada." });
+        }
+
+        var owned = await db.Rackets.AsNoTracking()
+            .AnyAsync(racket => racket.Id == id && racket.UserId == userId, cancellationToken);
+        if (!owned)
+        {
+            return NotFound(new { message = "Raquete não encontrada." });
+        }
+
+        var linkedExpenses = await db.Expenses
+            .Where(expense => expense.RacketServiceId == serviceId)
+            .ToListAsync(cancellationToken);
+        db.Expenses.RemoveRange(linkedExpenses);
+        db.RacketServices.Remove(service);
         await db.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
@@ -263,6 +348,7 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
 
             services.Add(new RacketService
             {
+                Id = item.Id ?? Guid.NewGuid(),
                 Kind = item.Kind,
                 ChangedAt = item.ChangedAt.ToUniversalTime(),
                 Detail = TrimToNull(item.Detail),
