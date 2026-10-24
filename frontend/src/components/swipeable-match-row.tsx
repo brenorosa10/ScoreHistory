@@ -2,7 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { MatchRecord } from "@/lib/api";
+import { SportBadge } from "@/components/sport-badge";
 import { formatShortDate } from "@/lib/format";
+import { courtApplies } from "@/lib/player-sports";
 import { resultBadgeClass, resultLetter } from "@/lib/match-result";
 import { cn } from "@/lib/utils";
 
@@ -163,11 +165,16 @@ export function SwipeableMatchRow({
             {resultLetter(match.won)}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium">
-              {hideOpponentName ? formatShortDate(match.playedAt) : match.opponentName}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="truncate font-medium">
+                {hideOpponentName ? formatShortDate(match.playedAt) : match.opponentName}
+              </p>
+              {match.sport ? <SportBadge sport={match.sport} /> : null}
+            </div>
             <p className="truncate text-xs text-muted-foreground">
-              {hideOpponentName ? match.courtType : `${formatShortDate(match.playedAt)} · ${match.courtType}`}
+              {hideOpponentName
+                ? courtApplies(match.sport) ? match.courtType : "Dupla"
+                : `${formatShortDate(match.playedAt)}${courtApplies(match.sport) && match.courtType ? ` · ${match.courtType}` : ""}`}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">

@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { ResourceMissing } from "@/components/resource-missing";
 import { Pagination } from "@/components/pagination";
 import { SwipeableMatchRow } from "@/components/swipeable-match-row";
+import { SportBadges } from "@/components/sport-badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingHint } from "@/components/ui/spinner";
@@ -115,6 +116,7 @@ export function OpponentDetailPage() {
               <p className="text-xs text-muted-foreground">
                 {opponentMeta(opponent.handedness, opponent.class)}
               </p>
+              <SportBadges sports={opponent.sports} className="mt-1" />
             </div>
             <p className="text-right text-sm font-semibold tabular-nums" aria-label={recordSummary(wins, draws, losses)}>
               {played > 0 ? h2hScore(wins, losses, draws) : "0-0"}
@@ -139,6 +141,18 @@ export function OpponentDetailPage() {
                   <span className="text-muted-foreground break-words [overflow-wrap:anywhere]">{opponent.weaknesses}</span>
                 </p>
               ) : null}
+            </div>
+          ) : null}
+          {opponent.sportStats && opponent.sportStats.length > 1 ? (
+            <div className="grid gap-1 border-t pt-3 text-sm">
+              {opponent.sportStats.map((item) => (
+                <p key={item.sport} className="flex justify-between gap-3">
+                  <span className="font-medium">{item.sport}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {h2hScore(item.wins, item.losses, item.draws)} · {item.played} {item.played === 1 ? "jogo" : "jogos"}
+                  </span>
+                </p>
+              ))}
             </div>
           ) : null}
         </section>

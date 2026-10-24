@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -7,8 +7,12 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { OptionGroup } from "@/components/ui/option-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useScrollToFieldError } from "@/hooks/use-scroll-to-field-error";
+import { SportMultiSelect } from "@/components/sport-multi-select";
 import { HANDEDNESS_OPTIONS, OPPONENT_CLASS_OPTIONS } from "@/lib/constants";
 import { findOpponentByName, type OpponentPayload } from "@/lib/api";
+import { sportsOrTennis, type PlayerSport } from "@/lib/player-sports";
+import { meQueryOptions } from "@/lib/queries";
+import { useQuery } from "@tanstack/react-query";
 
 export type OpponentFormValues = {
   name: string;
@@ -17,6 +21,7 @@ export type OpponentFormValues = {
   strengths: string;
   weaknesses: string;
   notes: string;
+  sports: PlayerSport[];
 };
 
 type OpponentFormProps = {
@@ -24,6 +29,8 @@ type OpponentFormProps = {
   submitLabel: string;
   pending?: boolean;
   ignoreId?: string;
+  defaultSports?: string[];
+  lockSports?: boolean;
   onSubmit: (payload: OpponentPayload) => void;
 };
 
@@ -34,6 +41,8 @@ export function OpponentForm({
   submitLabel,
   pending,
   ignoreId,
+  defaultSports,
+  lockSports = false,
   onSubmit,
 }: OpponentFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -44,6 +53,7 @@ export function OpponentForm({
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors, submitCount },
   } = useForm<OpponentFormValues>({
     defaultValues: {
@@ -53,10 +63,20 @@ export function OpponentForm({
       strengths: "",
       weaknesses: "",
       notes: "",
+      sports: sportsOrTennis(defaultSports),
       ...defaultValues,
     },
   });
+  const { data: user } = useQuery(meQueryOptions());
   useScrollToFieldError(formRef, submitCount);
+  const seededSports = useRef(Boolean(defaultValues?.sports || defaultSports));
+  useEffect(() => {
+    if (seededSports.current || !user?.sports?.length) {
+      return;
+    }
+    seededSports.current = true;
+    setValue("sports", sportsOrTennis(user.sports));
+  }, [setValue, user?.sports]);
 
   function toPayload(values: OpponentFormValues): OpponentPayload {
     return {
@@ -66,6 +86,7 @@ export function OpponentForm({
       strengths: values.strengths,
       weaknesses: values.weaknesses,
       notes: values.notes,
+      sports: values.sports,
     };
   }
 
@@ -116,6 +137,26 @@ export function OpponentForm({
             </option>
           ))}
         </NativeSelect>
+      </Field>
+
+      <Field label="Esportes" htmlFor="opponent-sports" error={errors.sports?.message}>
+        <Controller
+          control={control}
+          name="sports"
+          rules={{ validate: (value) => value.length > 0 || "Escolha pelo menos um esporte." }}
+          render={({ field }) => (
+            <SportMultiSelect
+              value={lockSports && defaultSports ? sportsOrTennis(defaultSports) : field.value}
+              invalid={Boolean(errors.sports)}
+              onChange={(next) => field.onChange(lockSports && defaultSports ? sportsOrTennis(defaultSports) : next)}
+            />
+          )}
+        />
+        {lockSports ? (
+          <p className="text-xs text-muted-foreground">Este adversário entra já marcado neste esporte. Você pode incluir outros depois.</p>
+        ) : user?.sports && user.sports.length === 1 ? (
+          <p className="text-xs text-muted-foreground">Sugerimos o esporte do seu perfil. Ajuste se a pessoa joga outros.</p>
+        ) : null}
       </Field>
 
       <Field label="Mão dominante" htmlFor="handedness">

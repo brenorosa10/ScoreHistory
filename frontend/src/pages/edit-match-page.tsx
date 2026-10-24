@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isNotFoundError, updateMatch, type MatchPayload, type MatchRecord } from "@/lib/api";
 import { COURT_TYPE_OPTIONS } from "@/lib/constants";
 import { matchQueryOptions, matchesQueryKey, dashboardQueryKey } from "@/lib/queries";
+import { normalizeRacketSport } from "@/lib/racket-sport";
 import { parseScore } from "@/lib/score";
 
 export function EditMatchPage() {
@@ -101,7 +102,10 @@ export function EditMatchPage() {
 
 function toFormValues(match: MatchRecord): MatchFormValues {
   return {
+    sport: normalizeRacketSport(match.sport),
     opponentId: match.opponentId,
+    partnerName: match.partnerName ?? "",
+    secondOpponentName: match.secondOpponentName ?? "",
     sets: parseScore(match.score),
     won: match.won === true ? "true" : match.won === false ? "false" : "draw",
     courtType: COURT_TYPE_OPTIONS.includes(

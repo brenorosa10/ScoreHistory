@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ScoreHistory.Api.Auth;
 using ScoreHistory.Api.Models;
 using ScoreHistory.Api.Services;
 
@@ -11,7 +12,9 @@ public sealed class UsersController(UserStore users) : ControllerBase
 {
     public sealed record CreateUserRequest(string Email, string Password, string Name);
 
-    public sealed record UserResponse(Guid Id, string Email, string? Name);
+    public sealed record UserResponse(Guid Id, string Email, string? Name, IReadOnlyList<string> Sports, bool SportsConfirmed);
+
+    public sealed record UpdateSportsRequest(IReadOnlyList<string>? Sports);
 
     [HttpPost]
     [AllowAnonymous]
@@ -54,5 +57,41 @@ public sealed class UsersController(UserStore users) : ControllerBase
         return Ok(ToResponse(user));
     }
 
-    private static UserResponse ToResponse(User user) => new(user.Id, user.Email, user.Name);
+    [HttpPut("me/sports")]
+    [Authorize]
+    public async Task<ActionResult<UserResponse>> UpdateSports(
+        [FromBody] UpdateSportsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = CurrentUser.GetId(User);
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var sports = Sports.Parse(request.Sports);
+        if (sports.Count == 0)
+        {
+            return BadRequest(new { message = "Escolha pelo menos um esporte." });
+        }
+
+        if (request.Sports is not null && request.Sports.Count != sports.Count)
+        {
+            return BadRequest(new { message = "Esporte inválido." });
+        }
+
+        var user = await users.FindByIdAsync(userId.Value, cancellationToken);
+        if (user is null)
+        {
+            return NotFound(new { message = "Usuário não encontrado." });
+        }
+
+        user.Sports = Sports.Format(sports);
+        user.SportsConfirmed = true;
+        await users.SaveAsync(user, cancellationToken);
+        return Ok(ToResponse(user));
+    }
+
+    private static UserResponse ToResponse(User user) =>
+        new(user.Id, user.Email, user.Name, Sports.Parse(user.Sports), user.SportsConfirmed);
 }

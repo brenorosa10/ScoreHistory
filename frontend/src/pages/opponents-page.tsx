@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
+import { SportBadges } from "@/components/sport-badge";
+import { SportFilter } from "@/components/sport-filter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,21 +15,25 @@ import { Spinner } from "@/components/ui/spinner";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DEFAULT_PAGE_SIZE } from "@/lib/api";
 import { opponentMeta, toInitials } from "@/lib/format";
+import { sportsOrTennis } from "@/lib/player-sports";
 import { drawCount, h2hScore } from "@/lib/record";
-import { opponentsQueryOptions } from "@/lib/queries";
+import { meQueryOptions, opponentsQueryOptions } from "@/lib/queries";
 
 export function OpponentsPage() {
   const navigate = useNavigate({ from: "/adversarios" });
   const search = useSearch({ from: "/app/adversarios" });
   const page = search.page ?? 1;
   const q = search.q ?? "";
+  const esporte = search.esporte;
   const [query, setQuery] = useState(q);
   const debouncedQuery = useDebouncedValue(query);
+  const { data: user } = useQuery(meQueryOptions());
   const { data, isPending, isFetching } = useQuery(
     opponentsQueryOptions({
       page,
       pageSize: DEFAULT_PAGE_SIZE,
       search: q,
+      sport: esporte,
     }),
   );
 
@@ -45,19 +51,19 @@ export function OpponentsPage() {
     }
 
     void navigate({
-      search: { page: 1, q: debouncedQuery || undefined },
+      search: { page: 1, q: debouncedQuery || undefined, esporte },
       replace: true,
     });
-  }, [debouncedQuery, navigate, q]);
+  }, [debouncedQuery, esporte, navigate, q]);
 
   useEffect(() => {
     if (data && data.totalPages > 0 && page > data.totalPages) {
-      void navigate({ search: { page: data.totalPages, q: q || undefined }, replace: true });
+      void navigate({ search: { page: data.totalPages, q: q || undefined, esporte }, replace: true });
     }
-  }, [data, navigate, page, q]);
+  }, [data, esporte, navigate, page, q]);
 
   function goToPage(nextPage: number) {
-    void navigate({ search: { page: nextPage, q: q || undefined } });
+    void navigate({ search: { page: nextPage, q: q || undefined, esporte } });
   }
 
   return (
@@ -77,6 +83,13 @@ export function OpponentsPage() {
       />
 
       <main className="grid gap-3 px-4 pt-4">
+        <SportFilter
+          sports={sportsOrTennis(user?.sports)}
+          value={esporte}
+          onChange={(next) => {
+            void navigate({ search: { page: 1, q: q || undefined, esporte: next } });
+          }}
+        />
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -155,6 +168,7 @@ export function OpponentsPage() {
                       <p className="text-xs text-muted-foreground">
                         {opponentMeta(opponent.handedness, opponent.class)}
                       </p>
+                      <SportBadges sports={opponent.sports} className="mt-1" />
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {played > 0 ? (
