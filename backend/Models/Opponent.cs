@@ -10,4 +10,5 @@ public sealed class Opponent
     public string? Weaknesses { get; set; }
     public string? Notes { get; set; }
     public required string Handedness { get; set; }
+    public string Sports { get; set; } = ",Tênis,";
 }

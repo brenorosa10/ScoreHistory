@@ -25,6 +25,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(user => user.Email).HasMaxLength(256).IsRequired();
             entity.Property(user => user.Name).HasMaxLength(256);
             entity.Property(user => user.PasswordHash).IsRequired();
+            entity.Property(user => user.Sports).HasMaxLength(64).IsRequired();
         });
 
         modelBuilder.Entity<Opponent>(entity =>
@@ -35,6 +36,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(opponent => opponent.Name).HasMaxLength(256).IsRequired();
             entity.Property(opponent => opponent.Class).HasMaxLength(32);
             entity.Property(opponent => opponent.Handedness).HasMaxLength(16).IsRequired();
+            entity.Property(opponent => opponent.Sports).HasMaxLength(64).IsRequired();
         });
 
         modelBuilder.Entity<Match>(entity =>
@@ -44,6 +46,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(match => match.UserId);
             entity.Property(match => match.Score).HasMaxLength(64).IsRequired();
             entity.Property(match => match.CourtType).HasMaxLength(32).IsRequired();
+            entity.Property(match => match.Sport).HasMaxLength(32).IsRequired();
+            entity.Property(match => match.PartnerName).HasMaxLength(120);
+            entity.Property(match => match.SecondOpponentName).HasMaxLength(120);
             entity.HasOne(match => match.Opponent)
                 .WithMany()
                 .HasForeignKey(match => match.OpponentId)

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { ResourceMissing } from "@/components/resource-missing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isNotFoundError, updateOpponent, type Opponent, type OpponentPayload } from "@/lib/api";
+import { sportsOrTennis } from "@/lib/player-sports";
 import { dashboardQueryKey, matchesQueryKey, opponentQueryOptions, opponentsQueryKey } from "@/lib/queries";
 
 export function EditOpponentPage() {
@@ -85,5 +86,6 @@ function toFormValues(opponent: Opponent): OpponentFormValues {
     strengths: opponent.strengths ?? "",
     weaknesses: opponent.weaknesses ?? "",
     notes: opponent.notes ?? "",
+    sports: sportsOrTennis(opponent.sports),
   };
 }

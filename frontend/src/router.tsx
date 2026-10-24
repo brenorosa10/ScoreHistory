@@ -23,6 +23,7 @@ import { FinancePage } from "@/pages/finance-page";
 import { ProfilePage } from "@/pages/profile-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { RegisterPage } from "@/pages/register-page";
+import { SportsOnboardingPage } from "@/pages/sports-onboarding-page";
 import { NewRacketPage } from "@/pages/new-racket-page";
 import { EditRacketPage } from "@/pages/edit-racket-page";
 
@@ -50,13 +51,27 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app",
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, location }) => {
     const user = await ensureSession(context.queryClient);
     if (!user) {
       throw redirect({ to: "/login" });
     }
+
+    const onboarding = location.pathname === "/esportes";
+    if (user.sportsConfirmed === false && !onboarding) {
+      throw redirect({ to: "/esportes" });
+    }
+    if (user.sportsConfirmed !== false && onboarding) {
+      throw redirect({ to: "/" });
+    }
   },
   component: AppLayout,
+});
+
+const sportsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/esportes",
+  component: SportsOnboardingPage,
 });
 
 const indexRoute = createRoute({
@@ -70,14 +85,17 @@ const historyRoute = createRoute({
   path: "/historico",
   validateSearch: (
     search: Record<string, unknown>,
-  ): { page?: number; filtro?: "wins" | "losses" | "draws" } => {
+  ): { page?: number; filtro?: "wins" | "losses" | "draws"; esporte?: "Tênis" | "Padel" | "Beach tennis" } => {
     const page = Number(search.page);
-    const next: { page?: number; filtro?: "wins" | "losses" | "draws" } = {};
+    const next: { page?: number; filtro?: "wins" | "losses" | "draws"; esporte?: "Tênis" | "Padel" | "Beach tennis" } = {};
     if (Number.isFinite(page) && page > 0) {
       next.page = Math.floor(page);
     }
     if (search.filtro === "wins" || search.filtro === "losses" || search.filtro === "draws") {
       next.filtro = search.filtro;
+    }
+    if (search.esporte === "Tênis" || search.esporte === "Padel" || search.esporte === "Beach tennis") {
+      next.esporte = search.esporte;
     }
     return next;
   },
@@ -111,14 +129,19 @@ const editRacketRoute = createRoute({
 const opponentsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/adversarios",
-  validateSearch: (search: Record<string, unknown>): { page?: number; q?: string } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { page?: number; q?: string; esporte?: "Tênis" | "Padel" | "Beach tennis" } => {
     const page = Number(search.page);
-    const next: { page?: number; q?: string } = {};
+    const next: { page?: number; q?: string; esporte?: "Tênis" | "Padel" | "Beach tennis" } = {};
     if (Number.isFinite(page) && page > 0) {
       next.page = Math.floor(page);
     }
     if (typeof search.q === "string" && search.q) {
       next.q = search.q;
+    }
+    if (search.esporte === "Tênis" || search.esporte === "Padel" || search.esporte === "Beach tennis") {
+      next.esporte = search.esporte;
     }
     return next;
   },
@@ -195,6 +218,7 @@ const registerRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   appRoute.addChildren([
+    sportsRoute,
     indexRoute,
     historyRoute,
     financeRoute,

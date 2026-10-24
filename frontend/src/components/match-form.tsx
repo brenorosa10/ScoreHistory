@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { OpponentPicker } from "@/components/opponent-picker";
@@ -12,6 +13,17 @@ import type { MatchPayload } from "@/lib/api";
 import { COURT_TYPE_OPTIONS } from "@/lib/constants";
 import { dateInputError, formatInputDate, todayInputValue } from "@/lib/format";
 import {
+  PLAYER_SPORTS,
+  courtApplies,
+  defaultMatchSport,
+  isDoublesSport,
+  opponentPlaysSport,
+  rememberMatchSport,
+  shouldAskMatchSport,
+  sportsOrTennis,
+} from "@/lib/player-sports";
+import { meQueryOptions, opponentQueryOptions } from "@/lib/queries";
+import {
   emptySet,
   formatScore,
   isValidScore,
@@ -22,7 +34,10 @@ import {
 } from "@/lib/score";
 
 export type MatchFormValues = {
+  sport: string;
   opponentId: string;
+  partnerName: string;
+  secondOpponentName: string;
   sets: ScoreEntry[];
   won: MatchResultChoice;
   courtType: string;
@@ -44,6 +59,7 @@ type MatchFormProps = {
 };
 
 const courtOptions = COURT_TYPE_OPTIONS.map((option) => ({ value: option, label: option }));
+const sportOptions = PLAYER_SPORTS.map((option) => ({ value: option, label: option }));
 
 function formErrorMessage(error: unknown): string | undefined {
   if (!error || typeof error !== "object") {
@@ -75,12 +91,16 @@ export function MatchForm({
     handleSubmit,
     watch,
     getValues,
+    setValue,
     setError,
     trigger,
     formState: { errors, submitCount },
   } = useForm<MatchFormValues>({
     defaultValues: {
+      sport: defaultValues?.sport || defaultMatchSport(undefined),
       opponentId: "",
+      partnerName: "",
+      secondOpponentName: "",
       sets: [emptySet()],
       won: "true",
       courtType: "Saibro",
@@ -94,13 +114,38 @@ export function MatchForm({
     },
   });
 
+  const { data: user } = useQuery(meQueryOptions());
+  const userSports = sportsOrTennis(user?.sports);
+  const askSport = shouldAskMatchSport(user?.sports);
   const sets = watch("sets");
   const won = watch("won");
   const playedAt = watch("playedAt");
+  const sport = watch("sport");
+  const opponentId = watch("opponentId");
+  const { data: selectedOpponent } = useQuery({
+    ...opponentQueryOptions(opponentId),
+    enabled: Boolean(opponentId),
+  });
   const scoreError = formErrorMessage(errors.sets);
   const mismatch = isValidScore(sets) ? resultMismatchMessage(sets, won) : null;
   const playedAtLabel = formatInputDate(playedAt);
   useScrollToFieldError(formRef, submitCount);
+
+  useEffect(() => {
+    if (!askSport && user?.sports && getValues("sport") !== userSports[0]) {
+      setValue("sport", userSports[0]);
+    }
+  }, [askSport, getValues, setValue, user?.sports, userSports]);
+
+  useEffect(() => {
+    if (
+      selectedOpponent &&
+      selectedOpponent.sports &&
+      !opponentPlaysSport(selectedOpponent.sports, sport)
+    ) {
+      setValue("opponentId", "");
+    }
+  }, [selectedOpponent, setValue, sport]);
 
   useEffect(() => {
     if (submitCount > 0) {
@@ -121,11 +166,15 @@ export function MatchForm({
             return;
           }
 
+          rememberMatchSport(values.sport);
           onSubmit({
+          sport: values.sport,
           opponentId: values.opponentId,
+          partnerName: isDoublesSport(values.sport) ? values.partnerName : "",
+          secondOpponentName: isDoublesSport(values.sport) ? values.secondOpponentName : "",
           score: formatScore(values.sets),
           won: values.won === "draw" ? null : values.won === "true",
-          courtType: values.courtType,
+          courtType: courtApplies(values.sport) ? values.courtType : "",
           playedAt: new Date(`${values.playedAt}T12:00:00`).toISOString(),
           notes: values.notes,
           strengths: values.strengths,
@@ -143,6 +192,23 @@ export function MatchForm({
       )}
     >
       <section className="grid gap-4 rounded-2xl border bg-card p-4 shadow-xs">
+        {askSport ? (
+          <Field label="Esporte da partida" htmlFor="sport">
+            <Controller
+              control={control}
+              name="sport"
+              render={({ field }) => (
+                <OptionGroup
+                  name="sport"
+                  options={sportOptions.filter((option) => userSports.includes(option.value))}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </Field>
+        ) : null}
+
         <Controller
           control={control}
           name="won"
@@ -173,6 +239,7 @@ export function MatchForm({
             render={({ field }) => (
               <OpponentPicker
                 value={field.value}
+                sport={sport}
                 onChange={field.onChange}
                 invalid={Boolean(errors.opponentId)}
               />
@@ -193,20 +260,37 @@ export function MatchForm({
           />
         </Field>
 
-        <Field label="Tipo de quadra" htmlFor="courtType">
-          <Controller
-            control={control}
-            name="courtType"
-            render={({ field }) => (
-              <OptionGroup
-                name="courtType"
-                options={courtOptions}
-                value={field.value}
-                onChange={field.onChange}
+        {courtApplies(sport) ? (
+          <Field label="Tipo de quadra" htmlFor="courtType">
+            <Controller
+              control={control}
+              name="courtType"
+              render={({ field }) => (
+                <OptionGroup
+                  name="courtType"
+                  options={courtOptions}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </Field>
+        ) : null}
+
+        {isDoublesSport(sport) ? (
+          <>
+            <Field label="Sua dupla" htmlFor="partnerName" hint="opcional">
+              <Input id="partnerName" placeholder="Quem jogou com você" {...register("partnerName")} />
+            </Field>
+            <Field label="Segundo adversário" htmlFor="secondOpponentName" hint="opcional">
+              <Input
+                id="secondOpponentName"
+                placeholder="A outra pessoa da dupla adversária"
+                {...register("secondOpponentName")}
               />
-            )}
-          />
-        </Field>
+            </Field>
+          </>
+        ) : null}
       </section>
 
       <section className="grid gap-4 rounded-2xl border bg-card p-4 shadow-xs">

@@ -9,6 +9,9 @@ public sealed class Match
     public required string Score { get; set; }
     public bool? Won { get; set; }
     public required string CourtType { get; set; }
+    public string Sport { get; set; } = "Tênis";
+    public string? PartnerName { get; set; }
+    public string? SecondOpponentName { get; set; }
     public string? Notes { get; set; }
     public string? Strengths { get; set; }
     public string? Weaknesses { get; set; }

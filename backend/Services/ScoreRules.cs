@@ -9,8 +9,12 @@ public static partial class ScoreRules
         RegexOptions.CultureInvariant)]
     private static partial Regex ScorePattern();
 
-    public static string? Validate(string? score, bool? won)
+    public static string? Validate(string? score, bool? won, string? sport = null)
     {
+        // Tennis and padel share regulation sets. Beach tennis uses the same
+        // grammar (6-0..6-4, 7-5, 7-6 and a super tie-break) so a single set
+        // or a no-ad event still validates without best-of-three rules.
+        _ = sport;
         if (string.IsNullOrWhiteSpace(score))
         {
             return "Placar inválido";

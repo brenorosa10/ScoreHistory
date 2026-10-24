@@ -20,6 +20,11 @@ public sealed class UserStore(AppDbContext db)
     public Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         db.Users.FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
 
+    public async Task SaveAsync(User user, CancellationToken cancellationToken = default)
+    {
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     public bool VerifyPassword(User user, string password) =>
         _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password)
             is not PasswordVerificationResult.Failed;
@@ -34,7 +39,9 @@ public sealed class UserStore(AppDbContext db)
         {
             Email = email.Trim(),
             Name = string.IsNullOrWhiteSpace(name) ? null : name.Trim(),
-            PasswordHash = string.Empty
+            PasswordHash = string.Empty,
+            Sports = Sports.Format([Sports.Tennis]),
+            SportsConfirmed = false
         };
         user.PasswordHash = _passwordHasher.HashPassword(user, password);
 

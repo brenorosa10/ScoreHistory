@@ -25,13 +25,16 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
         Guid OpponentId,
         string Score,
         bool? Won,
-        string CourtType,
+        string? CourtType,
         DateTime? PlayedAt,
         string? Notes,
         string? Strengths,
         string? Weaknesses,
         string? OpponentStrengths,
-        string? OpponentWeaknesses);
+        string? OpponentWeaknesses,
+        string? Sport,
+        string? PartnerName,
+        string? SecondOpponentName);
 
     public sealed record MatchResponse(
         Guid Id,
@@ -47,7 +50,11 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
         string? Strengths,
         string? Weaknesses,
         string? OpponentStrengths,
-        string? OpponentWeaknesses);
+        string? OpponentWeaknesses,
+        string Sport,
+        string? PartnerName,
+        string? SecondOpponentName,
+        IReadOnlyList<string> OpponentSports);
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<MatchResponse>>> List(
@@ -55,6 +62,7 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
         [FromQuery] int pageSize = PageQuery.DefaultPageSize,
         [FromQuery] string? filter = null,
         [FromQuery] Guid? opponentId = null,
+        [FromQuery] string? sport = null,
         CancellationToken cancellationToken = default)
     {
         var userId = CurrentUser.GetId(User);
@@ -71,6 +79,17 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
         if (opponentId is not null)
         {
             query = query.Where(match => match.OpponentId == opponentId);
+        }
+
+        var sportFilter = Sports.Normalize(sport);
+        if (!string.IsNullOrWhiteSpace(sport) && sportFilter is null)
+        {
+            return BadRequest(new { message = "Esporte inválido." });
+        }
+
+        if (sportFilter is not null)
+        {
+            query = query.Where(match => match.Sport == sportFilter);
         }
 
         if (string.Equals(filter, "wins", StringComparison.OrdinalIgnoreCase))
@@ -131,25 +150,13 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
             return Unauthorized();
         }
 
-        var scoreError = ScoreRules.Validate(request.Score, request.Won);
-        if (scoreError is not null)
+        var prepared = await PrepareAsync(userId.Value, request, cancellationToken);
+        if (prepared.Error is not null)
         {
-            return BadRequest(new { message = scoreError });
+            return BadRequest(new { message = prepared.Error });
         }
 
-        if (!CourtTypes.Contains(request.CourtType))
-        {
-            return BadRequest(new { message = "Tipo de quadra inválido." });
-        }
-
-        var opponent = await db.Opponents.FirstOrDefaultAsync(
-            item => item.Id == request.OpponentId && item.UserId == userId,
-            cancellationToken);
-        if (opponent is null)
-        {
-            return BadRequest(new { message = "Adversário não encontrado." });
-        }
-
+        var opponent = prepared.Opponent!;
         var match = new Match
         {
             UserId = userId.Value,
@@ -157,7 +164,10 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
             Opponent = opponent,
             Score = request.Score.Trim(),
             Won = request.Won,
-            CourtType = request.CourtType,
+            CourtType = prepared.CourtType!,
+            Sport = prepared.Sport!,
+            PartnerName = prepared.PartnerName,
+            SecondOpponentName = prepared.SecondOpponentName,
             PlayedAt = request.PlayedAt?.ToUniversalTime() ?? DateTime.UtcNow,
             Notes = TrimToNull(request.Notes),
             Strengths = TrimToNull(request.Strengths),
@@ -191,30 +201,21 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
             return NotFound(new { message = "Partida não encontrada." });
         }
 
-        var scoreError = ScoreRules.Validate(request.Score, request.Won);
-        if (scoreError is not null)
+        var prepared = await PrepareAsync(userId.Value, request, cancellationToken);
+        if (prepared.Error is not null)
         {
-            return BadRequest(new { message = scoreError });
+            return BadRequest(new { message = prepared.Error });
         }
 
-        if (!CourtTypes.Contains(request.CourtType))
-        {
-            return BadRequest(new { message = "Tipo de quadra inválido." });
-        }
-
-        var opponent = await db.Opponents.FirstOrDefaultAsync(
-            item => item.Id == request.OpponentId && item.UserId == userId,
-            cancellationToken);
-        if (opponent is null)
-        {
-            return BadRequest(new { message = "Adversário não encontrado." });
-        }
-
+        var opponent = prepared.Opponent!;
         match.OpponentId = opponent.Id;
         match.Opponent = opponent;
         match.Score = request.Score.Trim();
         match.Won = request.Won;
-        match.CourtType = request.CourtType;
+        match.CourtType = prepared.CourtType!;
+        match.Sport = prepared.Sport!;
+        match.PartnerName = prepared.PartnerName;
+        match.SecondOpponentName = prepared.SecondOpponentName;
         match.PlayedAt = request.PlayedAt?.ToUniversalTime() ?? match.PlayedAt;
         match.Notes = TrimToNull(request.Notes);
         match.Strengths = TrimToNull(request.Strengths);
@@ -248,6 +249,62 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
+    private async Task<(Opponent? Opponent, string? Sport, string? CourtType, string? PartnerName, string? SecondOpponentName, string? Error)> PrepareAsync(
+        Guid userId,
+        MatchRequest request,
+        CancellationToken cancellationToken)
+    {
+        var sport = string.IsNullOrWhiteSpace(request.Sport) ? Sports.Tennis : Sports.Normalize(request.Sport);
+        if (sport is null)
+        {
+            return (null, null, null, null, null, "Esporte inválido.");
+        }
+
+        var user = await db.Users.FirstOrDefaultAsync(item => item.Id == userId, cancellationToken);
+        if (user is not null && !Sports.Contains(user.Sports, sport))
+        {
+            return (null, null, null, null, null, "Esse esporte não está no seu perfil.");
+        }
+
+        var scoreError = ScoreRules.Validate(request.Score, request.Won, sport);
+        if (scoreError is not null)
+        {
+            return (null, null, null, null, null, scoreError);
+        }
+
+        string courtType;
+        if (Sports.CourtApplies(sport))
+        {
+            if (request.CourtType is null || !CourtTypes.Contains(request.CourtType))
+            {
+                return (null, null, null, null, null, "Tipo de quadra inválido.");
+            }
+
+            courtType = request.CourtType;
+        }
+        else
+        {
+            courtType = "";
+        }
+
+        var opponent = await db.Opponents.FirstOrDefaultAsync(
+            item => item.Id == request.OpponentId && item.UserId == userId,
+            cancellationToken);
+        if (opponent is null)
+        {
+            return (null, null, null, null, null, "Adversário não encontrado.");
+        }
+
+        if (!Sports.Contains(opponent.Sports, sport))
+        {
+            opponent.Sports = Sports.Add(opponent.Sports, sport);
+        }
+
+        var partner = Sports.IsDoublesSport(sport) ? TrimToNull(request.PartnerName) : null;
+        var second = Sports.IsDoublesSport(sport) ? TrimToNull(request.SecondOpponentName) : null;
+        return (opponent, sport, courtType, partner, second, null);
+    }
+
     private static MatchResponse ToResponse(Match match) =>
         new(
             match.Id,
@@ -263,7 +320,11 @@ public sealed class MatchesController(AppDbContext db) : ControllerBase
             match.Strengths,
             match.Weaknesses,
             match.OpponentStrengths,
-            match.OpponentWeaknesses);
+            match.OpponentWeaknesses,
+            string.IsNullOrWhiteSpace(match.Sport) ? Sports.Tennis : match.Sport,
+            match.PartnerName,
+            match.SecondOpponentName,
+            Sports.Parse(match.Opponent?.Sports));
 
     private static string? TrimToNull(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

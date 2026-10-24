@@ -20,11 +20,12 @@ import { cn } from "@/lib/utils";
 
 type OpponentPickerProps = {
   value: string;
+  sport?: string;
   onChange: (opponentId: string) => void;
   invalid?: boolean;
 };
 
-export function OpponentPicker({ value, onChange, invalid }: OpponentPickerProps) {
+export function OpponentPicker({ value, sport, onChange, invalid }: OpponentPickerProps) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -35,6 +36,7 @@ export function OpponentPicker({ value, onChange, invalid }: OpponentPickerProps
       page: 1,
       pageSize: 50,
       search: debouncedSearch,
+      sport,
     }),
   );
   const { data: selectedOpponent } = useQuery({
@@ -112,6 +114,8 @@ export function OpponentPicker({ value, onChange, invalid }: OpponentPickerProps
             <OpponentForm
               submitLabel="Salvar e selecionar"
               pending={mutation.isPending}
+              defaultSports={sport ? [sport] : undefined}
+              lockSports={Boolean(sport)}
               onSubmit={(payload) => mutation.mutate(payload)}
             />
             {mutation.isError ? (
