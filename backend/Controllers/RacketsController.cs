@@ -14,6 +14,7 @@ namespace ScoreHistory.Api.Controllers;
 public sealed class RacketsController(AppDbContext db) : ControllerBase
 {
     private static readonly HashSet<string> ServiceKinds = ["Corda", "Overgrip", "Grip", "Outro"];
+    private static readonly HashSet<string> Sports = ["Tênis", "Padel", "Beach tennis"];
 
     public sealed record RacketServiceRequest(
         Guid? Id,
@@ -24,6 +25,7 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
 
     public sealed record RacketRequest(
         string Name,
+        string? Sport,
         string? StringName,
         decimal? TensionLb,
         string? Grip,
@@ -44,6 +46,7 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
     public sealed record RacketResponse(
         Guid Id,
         string Name,
+        string Sport,
         string? StringName,
         decimal? TensionLb,
         string? Grip,
@@ -106,9 +109,19 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
             return BadRequest(new { message = "Informe o nome da raquete." });
         }
 
-        if (!TryMapServices(request.Services, out var services, out var error))
+        if (!TryNormalizeSport(request.Sport, out var sport, out var sportError))
+        {
+            return BadRequest(new { message = sportError });
+        }
+
+        if (!TryMapServices(request.Services, sport, out var services, out var error))
         {
             return BadRequest(new { message = error });
+        }
+
+        if (!AllowsStrings(sport) && (request.TensionLb is not null || !string.IsNullOrWhiteSpace(request.StringName)))
+        {
+            return BadRequest(new { message = "Raquetes de padel e beach tennis não usam corda." });
         }
 
         if (request.PurchasePrice is < 0)
@@ -120,8 +133,9 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
         {
             UserId = userId.Value,
             Name = request.Name.Trim(),
-            StringName = TrimToNull(request.StringName),
-            TensionLb = request.TensionLb,
+            Sport = sport,
+            StringName = AllowsStrings(sport) ? TrimToNull(request.StringName) : null,
+            TensionLb = AllowsStrings(sport) ? request.TensionLb : null,
             Grip = TrimToNull(request.Grip),
             PurchasePrice = request.PurchasePrice,
             Notes = TrimToNull(request.Notes),
@@ -153,9 +167,19 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
             return BadRequest(new { message = "Informe o nome da raquete." });
         }
 
-        if (!TryMapServices(request.Services, out var services, out var error))
+        if (!TryNormalizeSport(request.Sport, out var sport, out var sportError))
+        {
+            return BadRequest(new { message = sportError });
+        }
+
+        if (!TryMapServices(request.Services, sport, out var services, out var error))
         {
             return BadRequest(new { message = error });
+        }
+
+        if (!AllowsStrings(sport) && (request.TensionLb is not null || !string.IsNullOrWhiteSpace(request.StringName)))
+        {
+            return BadRequest(new { message = "Raquetes de padel e beach tennis não usam corda." });
         }
 
         if (request.PurchasePrice is < 0)
@@ -174,7 +198,8 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
         var stringColor = NormalizeColor(request.StringColor, "#e5e7eb");
         var gripColor = NormalizeColor(request.GripColor, "#44403c");
         var name = request.Name.Trim();
-        var stringName = TrimToNull(request.StringName);
+        var stringName = AllowsStrings(sport) ? TrimToNull(request.StringName) : null;
+        var tensionLb = AllowsStrings(sport) ? request.TensionLb : null;
         var grip = TrimToNull(request.Grip);
         var notes = TrimToNull(request.Notes);
 
@@ -220,8 +245,9 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(racket => racket.Name, name)
+                    .SetProperty(racket => racket.Sport, sport)
                     .SetProperty(racket => racket.StringName, stringName)
-                    .SetProperty(racket => racket.TensionLb, request.TensionLb)
+                    .SetProperty(racket => racket.TensionLb, tensionLb)
                     .SetProperty(racket => racket.Grip, grip)
                     .SetProperty(racket => racket.PurchasePrice, request.PurchasePrice)
                     .SetProperty(racket => racket.Notes, notes)
@@ -269,16 +295,18 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
             return Unauthorized();
         }
 
-        if (!TryMapServices([request], out var services, out var error))
-        {
-            return BadRequest(new { message = error });
-        }
-
-        var owned = await db.Rackets.AsNoTracking()
-            .AnyAsync(racket => racket.Id == id && racket.UserId == userId, cancellationToken);
-        if (!owned)
+        var sport = await db.Rackets.AsNoTracking()
+            .Where(racket => racket.Id == id && racket.UserId == userId)
+            .Select(racket => racket.Sport)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (sport is null)
         {
             return NotFound(new { message = "Raquete não encontrada." });
+        }
+
+        if (!TryMapServices([request], string.IsNullOrWhiteSpace(sport) ? "Tênis" : sport, out var services, out var error))
+        {
+            return BadRequest(new { message = error });
         }
 
         var service = services[0];
@@ -327,6 +355,7 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
 
     private static bool TryMapServices(
         IReadOnlyList<RacketServiceRequest>? requests,
+        string sport,
         out List<RacketService> services,
         out string? error)
     {
@@ -346,23 +375,46 @@ public sealed class RacketsController(AppDbContext db) : ControllerBase
                 return false;
             }
 
+            if (!AllowsStrings(sport) && (item.Kind == "Corda" || item.TensionLb is not null))
+            {
+                error = "Raquetes de padel e beach tennis não usam corda.";
+                return false;
+            }
+
             services.Add(new RacketService
             {
                 Id = item.Id ?? Guid.NewGuid(),
                 Kind = item.Kind,
                 ChangedAt = item.ChangedAt.ToUniversalTime(),
                 Detail = TrimToNull(item.Detail),
-                TensionLb = item.TensionLb
+                TensionLb = AllowsStrings(sport) ? item.TensionLb : null
             });
         }
 
         return true;
     }
 
+    private static bool TryNormalizeSport(string? value, out string sport, out string? error)
+    {
+        sport = string.IsNullOrWhiteSpace(value) ? "Tênis" : value.Trim();
+        if (Sports.Contains(sport))
+        {
+            error = null;
+            return true;
+        }
+
+        error = "Esporte inválido. Use Tênis, Padel ou Beach tennis.";
+        sport = "Tênis";
+        return false;
+    }
+
+    private static bool AllowsStrings(string sport) => sport == "Tênis";
+
     private static RacketResponse ToResponse(Racket racket) =>
         new(
             racket.Id,
             racket.Name,
+            string.IsNullOrWhiteSpace(racket.Sport) ? "Tênis" : racket.Sport,
             racket.StringName,
             racket.TensionLb,
             racket.Grip,

@@ -5,6 +5,7 @@ public sealed class Racket
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
     public required string Name { get; set; }
+    public string Sport { get; set; } = "Tênis";
     public string? StringName { get; set; }
     public decimal? TensionLb { get; set; }
     public string? Grip { get; set; }

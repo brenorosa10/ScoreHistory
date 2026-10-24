@@ -19,15 +19,17 @@ import {
 } from "@/lib/finance";
 import { formatMoney } from "@/lib/format";
 import { categoryTotals, monthKey } from "@/lib/ledger";
-import { expensesQueryOptions, financeQueryOptions } from "@/lib/queries";
+import { expensesQueryOptions, financeQueryOptions, racketsQueryOptions } from "@/lib/queries";
+import { racketHasStrings } from "@/lib/racket-sport";
 import { cn } from "@/lib/utils";
 
 type FinanceEditorProps = {
   finance: FinanceRecord;
+  showStringDefault?: boolean;
   onDone?: () => void;
 };
 
-export function FinanceEditor({ finance, onDone }: FinanceEditorProps) {
+export function FinanceEditor({ finance, showStringDefault = true, onDone }: FinanceEditorProps) {
   const {
     control,
     handleSubmit,
@@ -59,8 +61,10 @@ export function FinanceEditor({ finance, onDone }: FinanceEditorProps) {
         <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Consumíveis
         </legend>
-        <div className="grid grid-cols-3 gap-2">
-          <MoneyField id="fin-string" label="Corda" name="stringPrice" control={control} error={errors.stringPrice?.message} />
+        <div className={cn("grid gap-2", showStringDefault ? "grid-cols-3" : "grid-cols-2")}>
+          {showStringDefault ? (
+            <MoneyField id="fin-string" label="Corda" name="stringPrice" control={control} error={errors.stringPrice?.message} />
+          ) : null}
           <MoneyField id="fin-overgrip" label="Overgrip" name="overgripPrice" control={control} error={errors.overgripPrice?.message} />
           <MoneyField id="fin-grip" label="Grip" name="cushionGripPrice" control={control} error={errors.cushionGripPrice?.message} />
         </div>
@@ -138,6 +142,8 @@ function MoneyField({
 export function FinanceSection() {
   const { data: finance, isPending, isError } = useQuery(financeQueryOptions());
   const { data: expenses = [] } = useQuery(expensesQueryOptions());
+  const { data: rackets = [] } = useQuery(racketsQueryOptions());
+  const showStringDefault = rackets.length === 0 || rackets.some((racket) => racketHasStrings(racket.sport));
   const { openSheet } = useExpenseSheet();
   const [editing, setEditing] = useState(false);
 
@@ -182,7 +188,7 @@ export function FinanceSection() {
           Não foi possível carregar o financeiro.
         </p>
       ) : editing ? (
-        <FinanceEditor finance={finance} onDone={() => setEditing(false)} />
+        <FinanceEditor finance={finance} showStringDefault={showStringDefault} onDone={() => setEditing(false)} />
       ) : !hasAnyValue ? (
         <div className="grid justify-items-center gap-3 rounded-xl border border-dashed px-4 py-7 text-center">
           <Wallet className="size-6 text-muted-foreground" />
@@ -222,7 +228,7 @@ export function FinanceSection() {
                 value={ball.canPrice}
               />
             ))}
-            <Row label="Corda" value={finance.stringPrice} hint="valor padrão" />
+            {showStringDefault ? <Row label="Corda" value={finance.stringPrice} hint="valor padrão" /> : null}
             <Row label="Overgrip" value={finance.overgripPrice} hint="valor padrão" />
             <Row label="Grip" value={finance.cushionGripPrice} hint="valor padrão" />
           </dl>

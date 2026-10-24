@@ -66,7 +66,7 @@ export function ResultToggle({ value, onChange }: ResultToggleProps) {
         onClick={() => onChange("true")}
         className={cn(
           "h-10 rounded-lg text-sm font-semibold transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-          value === "true" ? "bg-success text-white shadow-sm" : "text-muted-foreground",
+          value === "true" ? "bg-success text-success-foreground shadow-sm" : "text-muted-foreground",
         )}
       >
         Vitória
@@ -78,7 +78,7 @@ export function ResultToggle({ value, onChange }: ResultToggleProps) {
         onClick={() => onChange("draw")}
         className={cn(
           "h-10 rounded-lg text-sm font-semibold transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-          value === "draw" ? "bg-warning text-foreground shadow-sm" : "text-muted-foreground",
+          value === "draw" ? "bg-warning text-warning-foreground shadow-sm" : "text-muted-foreground",
         )}
       >
         Empate
@@ -90,7 +90,7 @@ export function ResultToggle({ value, onChange }: ResultToggleProps) {
         onClick={() => onChange("false")}
         className={cn(
           "h-10 rounded-lg text-sm font-semibold transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-          value === "false" ? "bg-destructive text-white shadow-sm" : "text-muted-foreground",
+          value === "false" ? "bg-destructive text-destructive-foreground shadow-sm" : "text-muted-foreground",
         )}
       >
         Derrota

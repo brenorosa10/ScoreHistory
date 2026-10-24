@@ -34,6 +34,7 @@ import {
 } from "@/lib/format";
 import { intervalLabel } from "@/lib/ledger";
 import { SERVICE_KIND_META } from "@/lib/racket-service";
+import { racketHasStrings, sportLabel } from "@/lib/racket-sport";
 import { financeQueryOptions, racketsQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +63,7 @@ function RacketsSection() {
       <SectionHeading
         icon={<Backpack className="size-4" />}
         title="Raquetes"
-        description="Corda, overgrip e desgaste."
+        description="Overgrip, corda quando houver e desgaste."
         action={
           <Button asChild size="sm" className="shrink-0">
             <Link to="/perfil/raquetes/novo">
@@ -83,7 +84,7 @@ function RacketsSection() {
           <div>
             <p className="text-sm font-medium">Nenhuma raquete</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Cadastre para acompanhar corda, tensão e overgrip.
+              Cadastre tênis, padel ou beach tennis.
             </p>
           </div>
           <Button asChild size="sm" variant="outline">
@@ -346,20 +347,25 @@ function RacketCard({
   finance: FinanceRecord | undefined;
 }) {
   const { openSheet } = useExpenseSheet();
+  const hasStrings = racketHasStrings(racket.sport);
   const lastCorda = latestService(racket.services, ["Corda"]);
   const lastOvergrip = latestService(racket.services, ["Overgrip"]);
   const tensionLb = lastCorda?.tensionLb ?? racket.tensionLb;
 
   const specs = [
-    {
-      kind: "Corda" as const,
-      value: lastCorda?.detail?.trim() || racket.stringName?.trim() || "—",
-      extra: tensionLb != null ? `${tensionLb} lb` : null,
-      since: lastCorda?.changedAt,
-      price: finance?.stringPrice,
-      warn: STRING_WARN_DAYS,
-      average: intervalLabel(racket.services.filter((service) => service.kind === "Corda").map((service) => service.changedAt)),
-    },
+    ...(hasStrings
+      ? [
+          {
+            kind: "Corda" as const,
+            value: lastCorda?.detail?.trim() || racket.stringName?.trim() || "—",
+            extra: tensionLb != null ? `${tensionLb} lb` : null,
+            since: lastCorda?.changedAt,
+            price: finance?.stringPrice,
+            warn: STRING_WARN_DAYS,
+            average: intervalLabel(racket.services.filter((service) => service.kind === "Corda").map((service) => service.changedAt)),
+          },
+        ]
+      : []),
     {
       kind: "Overgrip" as const,
       value: lastOvergrip?.detail?.trim() || "—",
@@ -375,12 +381,14 @@ function RacketCard({
     <article className="grid min-w-0 gap-3 overflow-hidden rounded-xl border p-3">
       <div className="flex min-w-0 items-center gap-3">
         <RacketGlyph
+          sport={racket.sport}
           frameColor={racket.frameColor}
           stringColor={racket.stringColor}
           gripColor={racket.gripColor}
         />
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{racket.name}</p>
+          <p className="truncate text-[0.65rem] font-medium text-primary">{sportLabel(racket.sport)}</p>
           <p className="truncate text-xs text-muted-foreground">
             {racket.purchasePrice != null ? formatMoney(racket.purchasePrice) : "Valor não informado"}
           </p>
@@ -441,27 +449,45 @@ function RacketCard({
 }
 
 function RacketGlyph({
+  sport,
   frameColor,
   stringColor,
   gripColor,
 }: {
+  sport?: string;
   frameColor: string;
   stringColor: string;
   gripColor: string;
 }) {
+  const paddle = !racketHasStrings(sport);
+  const round = sport === "Beach tennis";
   return (
     <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted/70">
       <svg viewBox="0 0 24 24" className="size-7" aria-hidden>
-        <ellipse
-          cx="12"
-          cy="8.5"
-          rx="6.2"
-          ry="7.5"
-          fill={stringColor}
-          fillOpacity="0.45"
-          stroke={frameColor}
-          strokeWidth="1.6"
-        />
+        {paddle ? (
+          round ? (
+            <circle cx="12" cy="9" r="6.2" fill={stringColor} stroke={frameColor} strokeWidth="1.6" />
+          ) : (
+            <path
+              d="M12 2.6c3.4 0 5.4 2.4 5.4 5.6 0 3.4-2 5.6-5.4 6.2-3.4-.6-5.4-2.8-5.4-6.2C6.6 5 8.6 2.6 12 2.6z"
+              fill={stringColor}
+              stroke={frameColor}
+              strokeWidth="1.6"
+            />
+          )
+        ) : (
+          <ellipse
+            cx="12"
+            cy="8.5"
+            rx="6.2"
+            ry="7.5"
+            fill={stringColor}
+            fillOpacity="0.45"
+            stroke={frameColor}
+            strokeWidth="1.6"
+          />
+        )}
+        {paddle ? <circle cx="12" cy="8.5" r="0.7" fill={frameColor} /> : null}
         <line x1="12" y1="16" x2="12" y2="17.5" stroke={frameColor} strokeWidth="1.6" />
         <rect x="10.6" y="17" width="2.8" height="6" rx="1.4" fill={gripColor} />
       </svg>

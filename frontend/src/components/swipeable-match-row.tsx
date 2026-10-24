@@ -119,7 +119,7 @@ export function SwipeableMatchRow({
       <button
         type="button"
         aria-label="Excluir partida"
-        className="absolute inset-y-0 right-0 flex w-[88px] items-center justify-center bg-destructive text-white"
+        className="absolute inset-y-0 right-0 flex w-[88px] items-center justify-center bg-destructive text-destructive-foreground"
         onClick={() => {
           skipClick.current = true;
           onRequestDelete();

@@ -171,6 +171,7 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
                 "Id" uuid NOT NULL,
                 "UserId" uuid NOT NULL,
                 "Name" character varying(256) NOT NULL,
+                "Sport" character varying(32) NOT NULL DEFAULT 'Tênis',
                 "StringName" character varying(256),
                 "TensionLb" numeric(5,1),
                 "Grip" character varying(256),
@@ -215,6 +216,7 @@ static async Task EnsureSchemaAsync(IServiceProvider services)
             ALTER TABLE opponents ADD COLUMN IF NOT EXISTS "Class" character varying(32);
             ALTER TABLE matches ALTER COLUMN "Won" DROP NOT NULL;
             ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "PurchasePrice" numeric(10,2);
+            ALTER TABLE rackets ADD COLUMN IF NOT EXISTS "Sport" character varying(32) NOT NULL DEFAULT 'Tênis';
 
             CREATE TABLE IF NOT EXISTS ball_cans (
                 "Id" uuid NOT NULL,

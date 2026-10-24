@@ -399,10 +399,18 @@ public sealed class FinanceController(AppDbContext db) : ControllerBase
             }
 
             var owned = await db.Rackets.AsNoTracking()
-                .AnyAsync(racket => racket.Id == racketId && racket.UserId == userId, cancellationToken);
-            if (!owned)
+                .Where(racket => racket.Id == racketId && racket.UserId == userId)
+                .Select(racket => racket.Sport)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (owned is null)
             {
                 return NotFound(new { message = "Raquete não encontrada." });
+            }
+
+            var sport = string.IsNullOrWhiteSpace(owned) ? "Tênis" : owned;
+            if (sport != "Tênis" && (kind == "Corda" || request.TensionLb is not null))
+            {
+                return BadRequest(new { message = "Raquetes de padel e beach tennis não usam corda." });
             }
 
             var service = new RacketService

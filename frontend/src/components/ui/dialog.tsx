@@ -70,11 +70,11 @@ export function Dialog({ open, title, description, onClose, children, className 
         aria-modal="true"
         aria-labelledby="dialog-title"
         className={cn(
-          "relative z-10 max-h-[92svh] w-full animate-slide-up overflow-y-auto rounded-t-2xl border bg-background shadow-2xl sm:max-w-lg sm:rounded-2xl",
+          "relative z-10 max-h-[92svh] w-full animate-slide-up overflow-y-auto rounded-t-2xl border bg-background shadow-2xl sm:max-w-lg sm:rounded-2xl dark:bg-popover",
           className,
         )}
       >
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b bg-background/95 px-5 py-4 backdrop-blur">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b bg-background/95 px-5 py-4 backdrop-blur dark:bg-popover/95">
           <div className="grid gap-0.5">
             <h2 id="dialog-title" className="text-base font-semibold">
               {title}

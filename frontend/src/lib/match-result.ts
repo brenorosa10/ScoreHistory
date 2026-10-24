@@ -40,10 +40,10 @@ export function resultStripeClass(won: boolean | null): string {
 
 export function resultBannerClass(won: boolean | null): string {
   if (won === true) {
-    return "bg-success text-white";
+    return "bg-success text-success-foreground";
   }
   if (won === false) {
-    return "bg-destructive text-white";
+    return "bg-destructive text-destructive-foreground";
   }
-  return "bg-warning text-foreground";
+  return "bg-warning text-warning-foreground";
 }
