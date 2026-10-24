@@ -17,6 +17,7 @@ import {
 import { daysSince, formatMoney, formatRelativeDays } from "@/lib/format";
 import { categoryTotals, intervalLabel, monthKey } from "@/lib/ledger";
 import { SERVICE_KIND_META } from "@/lib/racket-service";
+import { racketHasStrings } from "@/lib/racket-sport";
 import { expensesQueryOptions, financeQueryOptions, racketsQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -40,8 +41,10 @@ export function EquipmentStatus() {
   }
 
   const list = rackets ?? [];
+  const stringRackets = list.filter((racket) => racketHasStrings(racket.sport));
   const overgrip = latestServiceAcross(list, ["Overgrip"]);
-  const corda = latestServiceAcross(list, ["Corda"]);
+  const corda = latestServiceAcross(stringRackets, ["Corda"]);
+  const showStrings = stringRackets.length > 0;
   const latestBall = latestOpenedBall(finance?.balls ?? []);
   const ballsAt = latestBall?.lastOpenedAt ?? finance?.lastBallCanOpenedAt ?? null;
   const ballDates = (finance?.openings ?? []).map((opening) => opening.openedAt);
@@ -59,7 +62,7 @@ export function EquipmentStatus() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className={cn("grid gap-2", showStrings ? "grid-cols-3" : "grid-cols-2")}>
         <StatusTile
           icon={CircleDot}
           title="Bolinhas"
@@ -80,16 +83,18 @@ export function EquipmentStatus() {
           warnAfter={OVERGRIP_WARN_DAYS}
           onOpen={() => openSheet({ kind: "Overgrip", racketId: overgrip?.racket.id })}
         />
-        <StatusTile
-          icon={SERVICE_KIND_META.Corda.icon}
-          title="Corda"
-          subtitle={corda ? corda.racket.name : "Última troca"}
-          changedAt={corda?.service.changedAt ?? null}
-          average={intervalLabel(list.flatMap((racket) => racket.services.filter((service) => service.kind === "Corda").map((service) => service.changedAt)))}
-          emptyLabel="Sem troca"
-          warnAfter={STRING_WARN_DAYS}
-          onOpen={() => openSheet({ kind: "Corda", racketId: corda?.racket.id })}
-        />
+        {showStrings ? (
+          <StatusTile
+            icon={SERVICE_KIND_META.Corda.icon}
+            title="Corda"
+            subtitle={corda ? corda.racket.name : "Última troca"}
+            changedAt={corda?.service.changedAt ?? null}
+            average={intervalLabel(stringRackets.flatMap((racket) => racket.services.filter((service) => service.kind === "Corda").map((service) => service.changedAt)))}
+            emptyLabel="Sem troca"
+            warnAfter={STRING_WARN_DAYS}
+            onOpen={() => openSheet({ kind: "Corda", racketId: corda?.racket.id })}
+          />
+        ) : null}
       </div>
       <Link
         to="/financeiro"

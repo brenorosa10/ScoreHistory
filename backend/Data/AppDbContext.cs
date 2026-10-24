@@ -56,6 +56,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasKey(racket => racket.Id);
             entity.HasIndex(racket => racket.UserId);
             entity.Property(racket => racket.Name).HasMaxLength(256).IsRequired();
+            entity.Property(racket => racket.Sport).HasMaxLength(32).IsRequired();
             entity.Property(racket => racket.StringName).HasMaxLength(256);
             entity.Property(racket => racket.TensionLb).HasPrecision(5, 1);
             entity.Property(racket => racket.Grip).HasMaxLength(256);

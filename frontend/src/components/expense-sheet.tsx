@@ -21,6 +21,7 @@ import {
   todayInputValue,
 } from "@/lib/format";
 import { CATEGORY_LABEL, EXPENSE_CATEGORIES } from "@/lib/ledger";
+import { racketHasStrings } from "@/lib/racket-sport";
 import { expensesQueryKey, financeQueryKey, financeQueryOptions, racketsQueryKey, racketsQueryOptions } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -105,6 +106,8 @@ function ExpenseSheetBody({ request, onDone }: { request: SheetRequest; onDone: 
   const [racketId, setRacketId] = useState(request.racketId ?? "");
   const [ballId, setBallId] = useState(request.ballCanId ?? "");
 
+  const stringRackets = rackets.filter((item) => racketHasStrings(item.sport));
+  const quickKinds = QUICK_KINDS.filter((item) => item.kind !== "Corda" || stringRackets.length > 0);
   const racket = rackets.find((item) => item.id === (racketId || defaultRacketId));
   const ball = finance?.balls.find((item) => item.id === ballId) ?? (finance?.balls.length === 1 ? finance.balls[0] : undefined);
   const activeRacketId = racketId || defaultRacketId;
@@ -154,7 +157,7 @@ function ExpenseSheetBody({ request, onDone }: { request: SheetRequest; onDone: 
   if (!kind) {
     return (
       <div className="grid grid-cols-2 gap-2">
-        {QUICK_KINDS.map((item) => {
+        {quickKinds.map((item) => {
           const Icon = item.icon;
           return (
             <button
@@ -190,6 +193,11 @@ function ExpenseSheetBody({ request, onDone }: { request: SheetRequest; onDone: 
   }
 
   const needsRacket = kind === "Overgrip" || kind === "Corda" || kind === "Grip";
+  const racketChoices = kind === "Corda" ? stringRackets : rackets;
+  const selectedRacketId =
+    kind === "Corda" && !stringRackets.some((item) => item.id === activeRacketId)
+      ? (stringRackets[0]?.id ?? "")
+      : activeRacketId;
   const needsBall = kind === "Bolinhas";
 
   function save() {
@@ -206,7 +214,11 @@ function ExpenseSheetBody({ request, onDone }: { request: SheetRequest; onDone: 
       setError("Informe a data.");
       return;
     }
-    if (needsRacket && !activeRacketId) {
+    if (kind === "Corda" && !stringRackets.some((item) => item.id === selectedRacketId)) {
+      setError("Corda só vale para raquetes de tênis.");
+      return;
+    }
+    if (needsRacket && !selectedRacketId) {
       setError("Cadastre uma raquete para registrar a troca.");
       return;
     }
@@ -220,7 +232,7 @@ function ExpenseSheetBody({ request, onDone }: { request: SheetRequest; onDone: 
       kind,
       occurredAt,
       amount: parsed,
-      racketId: needsRacket ? activeRacketId : null,
+      racketId: needsRacket ? selectedRacketId : null,
       ballCanId: needsBall ? ball?.id : null,
       tensionLb: tensionValue != null && Number.isFinite(tensionValue) ? tensionValue : null,
       note: note.trim() || null,
@@ -231,7 +243,7 @@ function ExpenseSheetBody({ request, onDone }: { request: SheetRequest; onDone: 
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap gap-1.5">
-        {QUICK_KINDS.map((item) => (
+        {quickKinds.map((item) => (
           <button
             key={item.kind}
             type="button"
@@ -264,11 +276,11 @@ function ExpenseSheetBody({ request, onDone }: { request: SheetRequest; onDone: 
         <Field label="Raquete" htmlFor="sheet-racket">
           <NativeSelect
             id="sheet-racket"
-            value={activeRacketId}
+            value={selectedRacketId}
             onChange={(event) => setRacketId(event.target.value)}
           >
-            {rackets.length === 0 ? <option value="">Nenhuma raquete</option> : null}
-            {rackets.map((item) => (
+            {racketChoices.length === 0 ? <option value="">Nenhuma raquete</option> : null}
+            {racketChoices.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>

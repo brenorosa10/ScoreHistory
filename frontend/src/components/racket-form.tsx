@@ -13,9 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import type { RacketPayload, RacketServiceKind, RacketServicePayload } from "@/lib/api";
 import { dateInputError, formatInputDate, parseMoney, todayInputValue } from "@/lib/format";
 import { servicesToPayload } from "@/lib/racket-service";
+import { DEFAULT_RACKET_SPORT, RACKET_SPORTS, racketHasStrings, serviceKindsForSport, type RacketSport } from "@/lib/racket-sport";
 
 export type RacketFormValues = {
   name: string;
+  sport: RacketSport;
   stringName: string;
   tensionLb: string;
   grip: string;
@@ -34,12 +36,12 @@ type RacketFormProps = {
   onSubmit: (payload: RacketPayload) => void;
 };
 
-const serviceKinds: { value: RacketServiceKind; label: string }[] = [
-  { value: "Corda", label: "Corda" },
-  { value: "Overgrip", label: "Overgrip" },
-  { value: "Grip", label: "Cushion grip" },
-  { value: "Outro", label: "Outro" },
-];
+const serviceLabels: Record<RacketServiceKind, string> = {
+  Corda: "Corda",
+  Overgrip: "Overgrip",
+  Grip: "Cushion grip",
+  Outro: "Outro",
+};
 
 function parseTension(value: string): number | null {
   const parsed = Number(value.replace(",", "."));
@@ -63,6 +65,7 @@ export function RacketForm({
   } = useForm<RacketFormValues>({
     defaultValues: {
       name: "",
+      sport: DEFAULT_RACKET_SPORT,
       stringName: "",
       tensionLb: "",
       grip: "",
@@ -76,20 +79,34 @@ export function RacketForm({
   });
   useScrollToFieldError(formRef, submitCount);
   const [services, setServices] = useState<RacketServicePayload[]>(defaultServices);
-  const [kind, setKind] = useState<RacketServiceKind>("Corda");
+  const [kind, setKind] = useState<RacketServiceKind>(
+    racketHasStrings(defaultValues?.sport) ? "Corda" : "Overgrip",
+  );
   const [changedAt, setChangedAt] = useState(todayInputValue);
   const [detail, setDetail] = useState("");
   const [serviceTension, setServiceTension] = useState("");
   const [addOpen, setAddOpen] = useState(defaultServices.length === 0);
   const [serviceDateError, setServiceDateError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const name = watch("name");
+  const sport = watch("sport");
+  const hasStrings = racketHasStrings(sport);
   const stringName = watch("stringName");
   const tensionLb = watch("tensionLb");
   const grip = watch("grip");
   const frameColor = watch("frameColor");
   const stringColor = watch("stringColor");
   const gripColor = watch("gripColor");
+  const kinds = serviceKindsForSport(sport).map((value) => ({ value, label: serviceLabels[value] }));
+
+  function selectSport(next: string) {
+    const sportValue = next as RacketSport;
+    setValue("sport", sportValue);
+    if (!racketHasStrings(sportValue) && kind === "Corda") {
+      setKind("Overgrip");
+    }
+  }
 
   function addService() {
     const dateError = dateInputError(changedAt, { max: todayInputValue() });
@@ -138,64 +155,85 @@ export function RacketForm({
       ref={formRef}
       noValidate
       className="grid gap-5"
-      onSubmit={handleSubmit((values) =>
+      onSubmit={handleSubmit((values) => {
+        const strings = racketHasStrings(values.sport);
+        if (!strings && services.some((service) => service.kind === "Corda")) {
+          setFormError("Remova as trocas de corda antes de salvar como padel ou beach tennis.");
+          return;
+        }
+        setFormError(null);
         onSubmit({
           name: values.name,
-          stringName: values.stringName,
-          tensionLb: parseTension(values.tensionLb),
+          sport: values.sport,
+          stringName: strings ? values.stringName : undefined,
+          tensionLb: strings ? parseTension(values.tensionLb) : null,
           grip: values.grip,
           purchasePrice: parseMoney(values.purchasePrice),
           notes: values.notes,
           frameColor: values.frameColor,
           stringColor: values.stringColor,
           gripColor: values.gripColor,
-          services: servicesToPayload(services),
-        }),
-      )}
+          services: servicesToPayload(strings ? services : services.filter((service) => service.kind !== "Corda")),
+        });
+      })}
     >
       <section className="grid gap-4 rounded-2xl border bg-card p-4 shadow-xs">
         <SectionHeader
           icon={<Settings2 className="size-4" />}
           title="Configuração"
-          description="Modelo, corda, tensão, cushion grip e valor."
+          description={hasStrings ? "Modelo, corda, tensão e valor." : "Modelo, grip e valor. Sem cordas."}
         />
+
+        <Field label="Esporte" htmlFor="racket-sport">
+          <OptionGroup
+            name="racket-sport"
+            options={RACKET_SPORTS.map((value) => ({ value, label: value }))}
+            value={sport}
+            onChange={selectSport}
+            columns={3}
+          />
+        </Field>
 
         <Field label="Raquete" htmlFor="racket-name" error={errors.name?.message}>
           <Input
             id="racket-name"
-            placeholder="Ex.: Wilson Blade 98"
+            placeholder={hasStrings ? "Ex.: Wilson Blade 98" : sport === "Padel" ? "Ex.: Bullpadel Vertex" : "Ex.: Vision Beach"}
             aria-invalid={errors.name ? true : undefined}
             {...register("name", { required: "Informe a raquete." })}
           />
         </Field>
 
-        <div className="grid gap-4 rounded-xl bg-muted/50 p-3">
-          <Field label="Corda" htmlFor="racket-string" hint="opcional">
-            <Input
-              id="racket-string"
-              className="bg-background"
-              placeholder="Ex.: Luxilon ALU Power"
-              {...register("stringName")}
-            />
-          </Field>
-          <Field
-            label="Tensão"
-            htmlFor="racket-tension"
-            hint="lb"
-            error={errors.tensionLb?.message}
-          >
-            <Input
-              id="racket-tension"
-              inputMode="decimal"
-              className="bg-background"
-              placeholder="Ex.: 52"
-              aria-invalid={errors.tensionLb ? true : undefined}
-              {...register("tensionLb", {
-                validate: (value) =>
-                  !value.trim() || parseTension(value) != null || "Informe uma tensão válida.",
-              })}
-            />
-          </Field>
+        <div className="grid gap-3 rounded-xl bg-muted/50 p-3">
+          {hasStrings ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Corda" htmlFor="racket-string" hint="opcional">
+                <Input
+                  id="racket-string"
+                  className="bg-background"
+                  placeholder="Ex.: Luxilon ALU Power"
+                  {...register("stringName")}
+                />
+              </Field>
+              <Field
+                label="Tensão"
+                htmlFor="racket-tension"
+                hint="lb"
+                error={errors.tensionLb?.message}
+              >
+                <Input
+                  id="racket-tension"
+                  inputMode="decimal"
+                  className="bg-background"
+                  placeholder="Ex.: 52"
+                  aria-invalid={errors.tensionLb ? true : undefined}
+                  {...register("tensionLb", {
+                    validate: (value) =>
+                      !hasStrings || !value.trim() || parseTension(value) != null || "Informe uma tensão válida.",
+                  })}
+                />
+              </Field>
+            </div>
+          ) : null}
           <Field label="Cushion grip" htmlFor="racket-grip" hint="opcional">
             <Input
               id="racket-grip"
@@ -225,8 +263,9 @@ export function RacketForm({
         </Field>
       </section>
 
-      <RacketPreview
+        <RacketPreview
         name={name}
+        sport={sport}
         stringName={stringName}
         tensionLb={tensionPreview(tensionLb)}
         grip={grip}
@@ -242,7 +281,7 @@ export function RacketForm({
         <SectionHeader
           icon={<History className="size-4" />}
           title="Histórico de trocas"
-          description="Corda, overgrip, grip e outras manutenções."
+          description={hasStrings ? "Corda, overgrip, grip e outras manutenções." : "Overgrip, grip e outras manutenções."}
           action={
             services.length > 0 && !addOpen ? (
               <Button type="button" size="sm" variant="outline" onClick={() => setAddOpen(true)}>
@@ -258,7 +297,7 @@ export function RacketForm({
             <Field label="Tipo" htmlFor="service-kind">
               <OptionGroup
                 name="service-kind"
-                options={serviceKinds}
+                options={kinds}
                 value={kind}
                 onChange={(value) => setKind(value as RacketServiceKind)}
                 columns={2}
@@ -329,6 +368,12 @@ export function RacketForm({
 
         <RacketServiceHistory services={services} onRemove={removeService} />
       </section>
+
+      {formError ? (
+        <p role="alert" className="text-sm font-medium text-destructive">
+          {formError}
+        </p>
+      ) : null}
 
       <Button type="submit" size="lg" loading={pending}>
         {pending ? "Salvando..." : submitLabel}

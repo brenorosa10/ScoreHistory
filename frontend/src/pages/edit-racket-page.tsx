@@ -6,6 +6,7 @@ import { ResourceMissing } from "@/components/resource-missing";
 import { DEFAULT_FRAME_COLOR, DEFAULT_GRIP_COLOR, DEFAULT_STRING_COLOR } from "@/components/racket-preview";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isNotFoundError, updateRacket, type RacketPayload, type RacketRecord } from "@/lib/api";
+import { normalizeRacketSport } from "@/lib/racket-sport";
 import { moneyToInput } from "@/lib/format";
 import { financeQueryKey, racketQueryOptions, racketsQueryKey } from "@/lib/queries";
 
@@ -78,6 +79,7 @@ export function EditRacketPage() {
 function toFormValues(racket: RacketRecord): RacketFormValues {
   return {
     name: racket.name,
+    sport: normalizeRacketSport(racket.sport),
     stringName: racket.stringName ?? "",
     tensionLb: racket.tensionLb != null ? String(racket.tensionLb) : "",
     grip: racket.grip ?? "",

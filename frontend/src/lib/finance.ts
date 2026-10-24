@@ -1,4 +1,5 @@
 import type { FinancePayload, FinanceRecord, RacketRecord } from "@/lib/api";
+import { racketHasStrings } from "@/lib/racket-sport";
 import { moneyToInput, parseMoney } from "@/lib/format";
 
 export type FinanceFormValues = {
@@ -111,7 +112,7 @@ export function monthlyFinanceBreakdown(
       if (!isSameCalendarMonth(service.changedAt, now)) {
         continue;
       }
-      if (service.kind === "Corda") stringCount += 1;
+      if (service.kind === "Corda" && racketHasStrings(racket.sport)) stringCount += 1;
       if (service.kind === "Overgrip") overgripCount += 1;
       if (service.kind === "Grip") gripCount += 1;
     }

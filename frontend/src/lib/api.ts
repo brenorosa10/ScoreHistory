@@ -215,6 +215,7 @@ export type RacketServiceRecord = {
 export type RacketRecord = {
   id: string;
   name: string;
+  sport: string;
   stringName: string | null;
   tensionLb: number | null;
   grip: string | null;
@@ -236,6 +237,7 @@ export type RacketServicePayload = {
 
 export type RacketPayload = {
   name: string;
+  sport?: string;
   stringName?: string;
   tensionLb?: number | null;
   grip?: string;
