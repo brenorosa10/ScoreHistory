@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatScore,
+  isIncompleteSet,
   isRegulationSet,
   parseScore,
   scoreFieldError,
@@ -20,10 +21,45 @@ describe("regulation set scores", () => {
     }
   });
 
+  it("accepts a match stopped before the set was finished", () => {
+    const cases: Array<[string, "true" | "false" | "draw"]> = [
+      ["4-1", "true"],
+      ["1-4", "false"],
+      ["3-2", "true"],
+      ["5-5", "draw"],
+      ["6-5", "true"],
+      ["6-6", "draw"],
+      ["6-4 4-1", "true"],
+      ["4-6 2-1", "draw"],
+    ];
+    for (const [score, won] of cases) {
+      const [homeGames, awayGames] = score.split(" ")[0].split("-").map(Number);
+      expect(isIncompleteSet(homeGames, awayGames) || isRegulationSet(homeGames, awayGames), score).toBe(true);
+      expect(scoreFieldError(sets(score), won), score).toBeNull();
+    }
+  });
+
+  it("still derives the winner from unfinished sets", () => {
+    expect(scoreFieldError(sets("4-1"), "false")).toBe(
+      "O placar aponta vitória, mas você marcou derrota.",
+    );
+    expect(scoreFieldError(sets("6-4 4-1"), "false")).toBe(
+      "O placar aponta vitória, mas você marcou derrota.",
+    );
+    expect(scoreFieldError(sets("3-3"), "draw")).toBeNull();
+    expect(scoreFieldError(sets("3-3"), "true")).toBe(
+      "O placar está empatado. Marque empate ou ajuste os games.",
+    );
+  });
+
   it("rejects impossible sets", () => {
-    for (const score of ["0-0", "7-7", "7-0", "0-7", "6-5", "5-6", "7-4", "4-7", "3-3"]) {
+    for (const score of ["0-0", "7-7", "7-0", "0-7", "7-4", "4-7", "8-6", "99-1"]) {
       expect(scoreFieldError(sets(score), "true"), score).toBe("Placar inválido");
     }
+
+    expect(scoreFieldError([{ kind: "set", home: "-1", away: "4" }], "true")).toBe("Placar inválido");
+    expect(scoreFieldError([{ kind: "set", home: "abc", away: "1" }], "true")).toBe("Placar inválido");
+    expect(scoreFieldError([{ kind: "set", home: "", away: "" }], "true")).toBe("Placar inválido");
   });
 
   it("keeps super tie-break notation such as 4-6 6-3 [3-7]", () => {

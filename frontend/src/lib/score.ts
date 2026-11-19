@@ -95,6 +95,11 @@ function wholeNumber(value: string | undefined): number | null {
   return Number(value);
 }
 
+/** Games above this cannot happen in a set (a set ends at 6 or 7). */
+const MAX_SET_GAMES = 7;
+/** Tie-break points offered in the form; anything past this is treated as absurd. */
+const MAX_TIEBREAK_POINTS = 25;
+
 /** A completed set: 6-0..6-4, 7-5 or 7-6, and the same scores reversed. */
 export function isRegulationSet(home: number, away: number): boolean {
   const high = Math.max(home, away);
@@ -105,6 +110,26 @@ export function isRegulationSet(home: number, away: number): boolean {
   return high === 7 && (low === 5 || low === 6);
 }
 
+/**
+ * A set stopped early: any game count that has not reached a winning score
+ * (below 6, or 6-5 / 6-6). 0-0 counts as empty, not as a played set.
+ */
+export function isIncompleteSet(home: number, away: number): boolean {
+  if (home < 0 || away < 0 || (home === 0 && away === 0)) {
+    return false;
+  }
+  if (home > MAX_SET_GAMES || away > MAX_SET_GAMES) {
+    return false;
+  }
+
+  const high = Math.max(home, away);
+  const low = Math.min(home, away);
+  if (high <= 5) {
+    return true;
+  }
+  return high === 6 && low >= 5;
+}
+
 function isValidEntry(entry: ScoreEntry): boolean {
   const home = wholeNumber(entry.home);
   const away = wholeNumber(entry.away);
@@ -113,10 +138,14 @@ function isValidEntry(entry: ScoreEntry): boolean {
   }
 
   if (entry.kind === "tiebreak") {
-    return home !== away;
+    return (
+      home !== away &&
+      home <= MAX_TIEBREAK_POINTS &&
+      away <= MAX_TIEBREAK_POINTS
+    );
   }
 
-  if (!isRegulationSet(home, away)) {
+  if (!isRegulationSet(home, away) && !isIncompleteSet(home, away)) {
     return false;
   }
 
