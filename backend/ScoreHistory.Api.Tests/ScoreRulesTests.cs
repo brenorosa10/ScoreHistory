@@ -31,19 +31,16 @@ public class ScoreRulesTests
         Assert.Null(ScoreRules.Validate(score, won));
     }
 
-    [Fact]
-    public void Incomplete_score_still_decides_win_or_loss()
+    [Theory]
+    [InlineData("4-1", false)]
+    [InlineData("6-4 4-1", false)]
+    [InlineData("1-2 5-3", true)]
+    [InlineData("3-3", true)]
+    [InlineData("6-0", null)]
+    [InlineData("0-6", true)]
+    public void Accepts_any_result_the_player_marked(string score, bool? won)
     {
-        Assert.Equal(
-            "O placar aponta vitória, mas você marcou derrota.",
-            ScoreRules.Validate("4-1", false));
-        Assert.Equal(
-            "O placar aponta vitória, mas você marcou derrota.",
-            ScoreRules.Validate("6-4 4-1", false));
-        Assert.Equal(
-            "O placar está empatado. Marque empate ou ajuste os games.",
-            ScoreRules.Validate("3-3", true));
-        Assert.Null(ScoreRules.Validate("3-3", null));
+        Assert.Null(ScoreRules.Validate(score, won));
     }
 
     [Theory]

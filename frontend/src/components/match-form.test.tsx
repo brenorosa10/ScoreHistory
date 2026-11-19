@@ -17,11 +17,19 @@ vi.stubGlobal(
   ),
 );
 
-function renderForm(onSubmit = vi.fn()) {
+function renderForm(
+  onSubmit = vi.fn(),
+  defaultValues?: { opponentId: string },
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <MatchForm submitLabel="Salvar partida" pending={false} onSubmit={onSubmit} />
+      <MatchForm
+        submitLabel="Salvar partida"
+        pending={false}
+        onSubmit={onSubmit}
+        defaultValues={defaultValues}
+      />
     </QueryClientProvider>,
   );
   return onSubmit;
@@ -41,13 +49,21 @@ describe("MatchForm score feedback", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("blocks a win that the score contradicts", async () => {
-    const onSubmit = renderForm();
+  it("warns and still saves when the marked result disagrees with the sets", async () => {
+    const onSubmit = renderForm(vi.fn(), { opponentId: "ana" });
 
-    fireEvent.change(screen.getByLabelText("1º set — games do adversário"), { target: { value: "6" } });
+    fireEvent.change(screen.getByLabelText("1º set — seus games"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("1º set — games do adversário"), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Set" }));
+    fireEvent.change(screen.getByLabelText("2º set — seus games"), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("2º set — games do adversário"), { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar partida" }));
 
-    expect(await screen.findByText("O placar aponta derrota, mas você marcou vitória.")).toBeTruthy();
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("O placar está empatado. Marque empate ou ajuste os games."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Placar inválido")).toBeNull();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ score: "1-2 5-3", won: true });
   });
 });

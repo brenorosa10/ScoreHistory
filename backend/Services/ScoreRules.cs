@@ -15,7 +15,10 @@ public static partial class ScoreRules
         // A finished set is 6-0..6-4, 7-5 or 7-6 (and the reverse). A match
         // can also end early, so an unfinished set (4-1, 3-2, 6-5, …) is valid.
         // Best-of-three is not required.
+        // The marked result is the player's choice. A tied or opposite score
+        // is only a warning in the form and never rejects the save.
         _ = sport;
+        _ = won;
         if (string.IsNullOrWhiteSpace(score))
         {
             return "Placar inválido";
@@ -33,29 +36,6 @@ public static partial class ScoreRules
             {
                 return "Placar inválido";
             }
-        }
-
-        return ResultMessage(ResolveWinner(entries), won);
-    }
-
-    private static string? ResultMessage(Side? winner, bool? won)
-    {
-        if (won is null)
-        {
-            return winner is null
-                ? null
-                : $"O placar aponta {(winner == Side.Home ? "vitória" : "derrota")}, mas você marcou empate.";
-        }
-
-        if (winner is null)
-        {
-            return "O placar está empatado. Marque empate ou ajuste os games.";
-        }
-
-        var marked = won.Value ? "vitória" : "derrota";
-        if ((winner == Side.Home) != won.Value)
-        {
-            return $"O placar aponta {(winner == Side.Home ? "vitória" : "derrota")}, mas você marcou {marked}.";
         }
 
         return null;
@@ -186,36 +166,6 @@ public static partial class ScoreRules
         }
 
         return high == 6 && low >= 5;
-    }
-
-    private static Side? ResolveWinner(IReadOnlyList<Entry> entries)
-    {
-        var home = 0;
-        var away = 0;
-        foreach (var entry in entries)
-        {
-            if (entry.Home > entry.Away)
-            {
-                home += 1;
-            }
-            else if (entry.Away > entry.Home)
-            {
-                away += 1;
-            }
-        }
-
-        if (home == away)
-        {
-            return null;
-        }
-
-        return home > away ? Side.Home : Side.Away;
-    }
-
-    private enum Side
-    {
-        Home,
-        Away
     }
 
     private sealed record Entry(bool Tiebreak, int Home, int Away, int? TbHome, int? TbAway);
