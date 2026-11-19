@@ -74,11 +74,14 @@ describe("score validation per sport", () => {
     expect(valid.every((entry) => entry.kind === "tiebreak" || entry.home !== entry.away || true)).toBe(true);
   });
 
-  it("rejects unfinished or illegal sets for every sport", () => {
+  it("accepts an interrupted set and still rejects illegal scores", () => {
     for (const sport of ["Tênis", "Padel", "Beach tennis"]) {
+      expect(isValidScoreForSport([set("4", "1")], sport)).toBe(true);
+      expect(isValidScoreForSport([set("6", "4"), set("4", "1")], sport)).toBe(true);
+      expect(isValidScoreForSport([set("6", "5")], sport)).toBe(true);
       expect(isValidScoreForSport([emptySet()], sport)).toBe(false);
-      expect(isValidScoreForSport([set("6", "5")], sport)).toBe(false);
       expect(isValidScoreForSport([set("8", "6")], sport)).toBe(false);
+      expect(isValidScoreForSport([set("7", "0")], sport)).toBe(false);
       expect(isValidScoreForSport([set("7", "6")], sport)).toBe(true);
       expect(isValidScoreForSport([set("7", "6", "7", "7")], sport)).toBe(false);
     }

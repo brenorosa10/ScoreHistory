@@ -11,9 +11,10 @@ public static partial class ScoreRules
 
     public static string? Validate(string? score, bool? won, string? sport = null)
     {
-        // Tennis and padel share regulation sets. Beach tennis uses the same
-        // grammar (6-0..6-4, 7-5, 7-6 and a super tie-break) so a single set
-        // or a no-ad event still validates without best-of-three rules.
+        // Tennis, padel and beach tennis share the same score grammar.
+        // A finished set is 6-0..6-4, 7-5 or 7-6 (and the reverse). A match
+        // can also end early, so an unfinished set (4-1, 3-2, 6-5, …) is valid.
+        // Best-of-three is not required.
         _ = sport;
         if (string.IsNullOrWhiteSpace(score))
         {
@@ -120,10 +121,14 @@ public static partial class ScoreRules
     {
         if (entry.Tiebreak)
         {
-            return entry.Home != entry.Away && entry.Home >= 0 && entry.Away >= 0;
+            return entry.Home != entry.Away
+                && entry.Home >= 0
+                && entry.Away >= 0
+                && entry.Home <= MaxTiebreakPoints
+                && entry.Away <= MaxTiebreakPoints;
         }
 
-        if (!IsRegulationSet(entry.Home, entry.Away))
+        if (!IsRegulationSet(entry.Home, entry.Away) && !IsIncompleteSet(entry.Home, entry.Away))
         {
             return false;
         }
@@ -142,6 +147,9 @@ public static partial class ScoreRules
         return entry.TbHome > entry.TbAway == entry.Home > entry.Away;
     }
 
+    private const int MaxSetGames = 7;
+    private const int MaxTiebreakPoints = 25;
+
     private static bool IsRegulationSet(int home, int away)
     {
         var high = Math.Max(home, away);
@@ -152,6 +160,32 @@ public static partial class ScoreRules
         }
 
         return high == 7 && (low == 5 || low == 6);
+    }
+
+    /// <summary>
+    /// Set interrompido: qualquer contagem que ainda não fechou o set
+    /// (abaixo de 6, ou 6-5 / 6-6). 0-0 é placar vazio.
+    /// </summary>
+    private static bool IsIncompleteSet(int home, int away)
+    {
+        if (home < 0 || away < 0 || (home == 0 && away == 0))
+        {
+            return false;
+        }
+
+        if (home > MaxSetGames || away > MaxSetGames)
+        {
+            return false;
+        }
+
+        var high = Math.Max(home, away);
+        var low = Math.Min(home, away);
+        if (high <= 5)
+        {
+            return true;
+        }
+
+        return high == 6 && low >= 5;
     }
 
     private static Side? ResolveWinner(IReadOnlyList<Entry> entries)
