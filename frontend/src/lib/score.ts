@@ -176,6 +176,10 @@ export function resultMismatchMessage(
   entries: ScoreEntry[],
   won: MatchResultChoice,
 ): string | null {
+  if (!isValidScore(entries)) {
+    return null;
+  }
+
   const winner = resolveWinner(entries);
   const marked = won === "draw" ? "empate" : won === "true" ? "vitória" : "derrota";
 
@@ -197,13 +201,13 @@ export function resultMismatchMessage(
   return null;
 }
 
-/** Message shown next to the score. Invalid sets take priority over the result check. */
-export function scoreFieldError(entries: ScoreEntry[], won: MatchResultChoice): string | null {
+/** Blocking message for a malformed score. A result mismatch is a warning, not an error. */
+export function scoreFieldError(entries: ScoreEntry[]): string | null {
   if (!isValidScore(entries)) {
     return "Placar inválido";
   }
 
-  return resultMismatchMessage(entries, won);
+  return null;
 }
 
 /** Who took more sets, so the form can warn when the score contradicts the selected result. */

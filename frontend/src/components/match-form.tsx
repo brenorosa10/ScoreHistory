@@ -93,7 +93,6 @@ export function MatchForm({
     getValues,
     setValue,
     setError,
-    trigger,
     formState: { errors, submitCount },
   } = useForm<MatchFormValues>({
     defaultValues: {
@@ -147,12 +146,6 @@ export function MatchForm({
     }
   }, [selectedOpponent, setValue, sport]);
 
-  useEffect(() => {
-    if (submitCount > 0) {
-      void trigger("sets");
-    }
-  }, [submitCount, trigger, won]);
-
   return (
     <form
       ref={formRef}
@@ -160,7 +153,7 @@ export function MatchForm({
       className="grid gap-4 px-4 pt-4"
       onSubmit={handleSubmit(
         (values) => {
-          const message = scoreFieldError(values.sets, values.won);
+          const message = scoreFieldError(values.sets);
           if (message) {
             setError("sets", { type: "validate", message });
             return;
@@ -184,7 +177,7 @@ export function MatchForm({
         });
         },
         () => {
-          const message = scoreFieldError(getValues("sets"), getValues("won"));
+          const message = scoreFieldError(getValues("sets"));
           if (message) {
             setError("sets", { type: "validate", message });
           }
@@ -220,14 +213,16 @@ export function MatchForm({
             control={control}
             name="sets"
             rules={{
-              validate: (value) => scoreFieldError(value, getValues("won")) ?? true,
+              validate: (value) => scoreFieldError(value) ?? true,
             }}
             render={({ field }) => (
               <ScoreBuilder value={field.value} onChange={field.onChange} invalid={Boolean(scoreError)} />
             )}
           />
           {mismatch && !scoreError ? (
-            <p className="rounded-xl bg-warning/10 px-3 py-2 text-sm text-foreground">{mismatch}</p>
+            <p role="status" className="rounded-xl bg-warning/10 px-3 py-2 text-sm text-foreground">
+              {mismatch}
+            </p>
           ) : null}
         </Field>
 
